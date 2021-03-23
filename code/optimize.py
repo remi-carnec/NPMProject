@@ -28,15 +28,15 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
         wholeDataCloud = (all_eigenvalues, all_eigenvectors)
 
 
-    # YOUR CODE
+    # Initialize
     rms = RMS_threshold
     dist_threshold = 0.1
     tree = KDTree(ref.T, leaf_size=8)
     data_aligned = data.copy()
-    for i in range(max_iter):
-        # Stopping rule
-        if rms < RMS_threshold:
-            break
+    i = 0
+
+    # Iterate until convergence
+    while i < max_iter and rms < RMS_threshold:
 
         # Find neighbors
         dst, indices = tree.query(data_aligned.T, k = 1)
@@ -50,7 +50,8 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
         data_aligned = R @ data_aligned + T
         rms = np.sqrt(np.mean(np.sum(np.power(data_aligned - ref[:,indices], 2), axis=0)))
         print("rms = {}".format(rms))
-        # Store
+
+        # Store transformation
         if len(R_list) == 0:
             R_list.append(R.copy())
             T_list.append(T.copy())
