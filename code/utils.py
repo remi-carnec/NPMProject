@@ -73,18 +73,82 @@ def ProjMatrix(data, ref, dataCloud, radius, k = None):
     #res = np.einsum('ijk,ijl->ijkl', all_eigenvectors, all_eigenvectors)
     return projMatrices
 
-def RotMatrix(thetas):
+def RotDecompo(thetas):
     R_x = np.array([[1,0,0], [0, np.cos(thetas[0]), -np.sin(thetas[0])], [0, np.sin(thetas[0]), np.cos(thetas[0])]])
     R_y = np.array([[np.cos(thetas[1]),0,np.sin(thetas[1])], [0, 1, 0], [-np.sin(thetas[1]),0,np.cos(thetas[1])]])
     R_z = np.array([[np.cos(thetas[2]),-np.sin(thetas[2]), 0], [np.sin(thetas[2]),np.cos(thetas[2]), 0], [0, 0, 1]])
+    return R_x, R_y, R_z
+
+def RotMatrix(thetas):
     #return R.from_euler('zyx', thetas)
+    R_x, R_y, R_z = RotDecompo(thetas)
     return R_z @ R_y @ R_x
+
+def computeGradRot(thetas):
+    grad = np.zeros((3,3,3))
+    R_x, R_y, R_z = RotDecompo(thetas)
+    grad_x = np.array([[0,0,0], [0, -np.sin(thetas[0]), -np.cos(thetas[0])], [0, np.cos(thetas[0]), -np.sin(thetas[0])]])
+    grad_y = np.array([[-np.sin(thetas[1]),0,np.cos(thetas[1])], [0, 0, 0], [-np.cos(thetas[1]),0,-np.sin(thetas[1])]])
+    grad_z = np.array([[-np.sin(thetas[2]),-np.cos(thetas[2]), 0], [np.cos(thetas[2]),-np.sin(thetas[2]), 0], [0, 0, 0]])
+    grad[0], grad[1], grad[2] = R_z @ R_y @ grad_x, R_z @ grad_y @ R_x, grad_z @ R_y @ R_x
+    return grad
 
 def computeRotations(eigenvectors):
     epsilon = 1e-2
     cov = np.diag([epsilon, 1, 1])
-    rotations = rotations = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', eigenvectors, cov), eigenvectors.T)
+    rotations = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', eigenvectors, cov), eigenvectors.T)
     return rotations
+
+def computeRotationFromVectors(normals):
+    e1 = np.array([1, 0, 0])
+    v = np.apply_along_axis(lambda x: np.cross(e1, x), axis=1, arr = normals)
+    #s = np.linalg.norm(v, axis = 1)
+    c = normals[:,0]
+    sk = skew(v)
+    R = np.eye(3) + sk + np.einsum('ijk,ikl->ijl', sk, sk)/(1+c[:,None,None])
+    return R
+
+def skew(normals):
+    sk = np.zeros((normals.shape[0], normals.shape[1], normals.shape[1]))
+    sk[:,0,1], sk[:,0,2], sk[:,1,2] = - normals[:,2], normals[:,1], - normals[:,0]
+    sk = sk - sk.transpose(0,2,1)
+    return sk
+
+def computeCovMat(cloud):
+    n = cloud.shape[0]
+    tree = KDTree(cloud)
+    dist, indices = tree.query(cloud, k = 10)
+    #all_eigenvalues = np.zeros((n, 3))
+    covMat, all_eigenvectors = np.zeros((n, 3, 3)), np.zeros((n, 3, 3))
+    for k in tqdm(range(n), desc = 'covariance'):
+        eigenvalues, eigenvectors = PCA(cloud[indices[k]])
+        #all_eigenvalues[k] = eigenvalues
+        all_eigenvectors[k] = eigenvectors
+    R = computeRotationFromVectors(all_eigenvectors[:,0])
+    eps = 1e-2
+    I_eps = np.diag([eps, 1, 1])
+    Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', R, I_eps), R.T)
+    return Cov
+
+def computeCovTest(cloud):
+    d = 3
+    new_n = cloud.shape[0]
+    cov_mat = np.zeros((new_n,d,d))
+
+    tree = KDTree(cloud)
+    dist, indices = tree.query(cloud, k = 10)
+    all_eigenvectors = np.zeros((new_n, 3, 3))
+    for k in tqdm(range(new_n), desc = 'covariance'):
+        eigenvalues, eigenvectors = PCA(cloud[indices[k]])
+        all_eigenvectors[k] = eigenvectors
+
+    dz_cov_mat = np.eye(d)
+    dz_cov_mat[0,0] = 1e-2
+    for i in range(new_n):
+        U = all_eigenvectors[i]
+        cov_mat[i,:,:] = U @ dz_cov_mat @ U.T
+
+    return cov_mat
 
 def show_ICP(data, ref, R_list, T_list, neighbors_list):
     '''
@@ -173,3 +237,29 @@ def show_ICP(data, ref, R_list, T_list, neighbors_list):
 
     # Start figure
     plt.show()
+
+def grad_loss(x,a,b,M):
+    """
+    Gradient of the loss loss for parameter x
+    params:
+        x : length 6 vector of transformation parameters
+            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
+        a : data to align n*3
+        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
+        M : central matrix for each data point n*3*3 (cf loss equation)
+    returns:
+        Value of the gradient of the loss function
+    """
+    t = x[3:]
+    R = RotMatrix(x[:3])
+    g = np.zeros(6)
+    residual = b - a @ R.T -t[None,:] # shape n*d
+    tmp = np.sum(M * residual[:,None,:], axis = 2) # shape n*d
+
+    g[3:] = - 2*np.sum(tmp, axis = 0)
+
+    grad_R = - 2* (tmp.T @ a) # shape d*d
+    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
+    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
+    return g
+

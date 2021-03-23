@@ -15,7 +15,7 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
     neighbors_list = []
     RMS_list = []
     dataCloud = None
-    if algo.name == "point2plane":
+    if algo.name == "point2plane" or algo.name == "plane2plane":
         tree = KDTree(ref.T)
         dist, indices = tree.query(ref.T, k = 10)
         all_eigenvalues = np.zeros((ref.shape[1], 3))
@@ -30,7 +30,7 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
 
     # YOUR CODE
     rms = RMS_threshold
-    dist_threshold = 1e-2
+    dist_threshold = 0.1
     tree = KDTree(ref.T, leaf_size=8)
     data_aligned = data.copy()
     for i in range(max_iter):
@@ -44,7 +44,7 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
         indices = indices.reshape(indices.shape[0])
         print(np.mean(account))
         # Compute and apply transformation
-        if algo.name == "point2plane":
+        if algo.name == "point2plane" or algo.name == "plane2plane":
             dataCloud = (wholeDataCloud[0][indices[account]], wholeDataCloud[1][indices[account]])
         R, T = algo.findBestTransform(data_aligned[:,account], ref[:,indices[account]], dataCloud)
         data_aligned = R @ data_aligned + T

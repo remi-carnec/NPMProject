@@ -25,7 +25,7 @@ if __name__ == '__main__':
     bunny_p = np.vstack((bunny_p_ply['x'], bunny_p_ply['y'], bunny_p_ply['z']))
 
     # Apply ICP
-    algo = Algorithm('point2plane')
+    algo = Algorithm('plane2plane')
     bunny_p_opt, R_list, T_list, neighbors_list, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
 
     # Show ICP
