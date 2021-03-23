@@ -26,7 +26,8 @@ if __name__ == '__main__':
 
     # Apply ICP
     algo = Algorithm('plane2plane')
-    bunny_p_opt, R_list, T_list, neighbors_list, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
+    #bunny_p_opt, R_list, T_list, neighbors_list, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
+    bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
 
     # Show ICP
     #show_ICP(bunny_p, bunny_o, R_list, T_list, neighbors_list)
