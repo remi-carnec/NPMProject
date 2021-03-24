@@ -3,6 +3,7 @@ from ply import write_ply, read_ply
 from utils import show_ICP
 import sys
 import numpy as np
+from time import time
 
 # Import library to plot in python
 from matplotlib import pyplot as plt
@@ -25,18 +26,25 @@ if __name__ == '__main__':
     bunny_p = np.vstack((bunny_p_ply['x'], bunny_p_ply['y'], bunny_p_ply['z']))
 
     # Apply ICP
-    algo = Algorithm('plane2plane')
-    #bunny_p_opt, R_list, T_list, neighbors_list, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
-    bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-4)
+    algos = [Algorithm('plane2plane'), Algorithm('point2plane'), Algorithm('point2point')]
+    #algo = Algorithm('point2point')
+    for algo in algos:
+        start = time()
+        bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-5)
+        print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
+        plt.plot(RMS_list, label = algo.name)
 
     # Show ICP
     #show_ICP(bunny_p, bunny_o, R_list, T_list, neighbors_list)
 
     # Save cloud
-    write_ply('../bunny_r_opt', [bunny_p_opt.T], ['x', 'y', 'z'])
+    #write_ply('../bunny_r_opt', [bunny_p_opt.T], ['x', 'y', 'z'])
 
     # Plot RMS
-    plt.plot(RMS_list)
-    plt.title(algo.name)
+    #plt.plot(RMS_list)
+    #plt.title(algo.name)
+    plt.xlabel('iterations')
+    plt.ylabel('RMS')
+    plt.legend()
     plt.show()
 

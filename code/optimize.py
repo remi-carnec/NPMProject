@@ -12,14 +12,14 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
     args = None
     if algo.name == "point2plane" or algo.name == "plane2plane":
         print("Precalculating data:")
-        tree, args = compute_eigen_data(data.T, ref.T, algo, k = 10)
+        tree, args = compute_eigen_data(data.T, ref.T, algo, k = 20)
         print("Done")
     else:
         tree = KDTree(ref.T)
 
     # Initialize
     rms = RMS_threshold
-    dist_threshold = 0.1
+    dist_threshold = 0.05
     data_aligned = data.copy()
     n = data.shape[1]
     iter = 0

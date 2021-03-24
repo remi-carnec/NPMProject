@@ -30,7 +30,7 @@ class Algorithm:
 
         # Generalized ICP
         elif self.name == 'plane2plane' and False:
-            cov_data, cov_ref = args['cov_data'], args['cov_ref']
+            cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
             last_min = np.inf
             cpt = 0
             n_iter_max = 50
@@ -51,7 +51,7 @@ class Algorithm:
             #df = lambda x: grad_loss(x,data.T,ref.T,M)
             #out = fmin_cg(f = f, x0 = x, fprime = df, disp = False, full_output = True)
             #x = out[0]
-            ref_0, data_0 = ref.T, data.T
+            ref_0, data_0 = ref.T[indices_ref], data.T[indices_data]
             while True:
                 cpt = cpt+1
                 R = RotMatrix(x[:3])
@@ -84,34 +84,21 @@ class Algorithm:
             T = x[3:].reshape(-1,1)
             R = RotMatrix(x[:3])
 
-        elif True:
-            cov_data, cov_ref = args['cov_data'], args['cov_ref']
-            n = cov_data.shape[0]
-            ref_0, data_0 = ref.T, data.T
+        elif self.name == "plane2plane":
+            cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
+            ref_0, data_0 = ref[:,indices_ref].T, data[:,indices_data].T
             def loss(args):
                 R, T = RotMatrix(args[:3]), args[3:]
                 diff = ref_0 - (data_0 @ R.T + T[None,:])
-                #M = np.array([np.linalg.inv(cov_ref[i] + R @ cov_data[i] @ R.T) for i in range(n)])
-                center_matrix = np.array([np.linalg.inv(cov_data[i] + R @ cov_ref[i] @ R.T) for i in range(n)])
-                #residual = ref.T - data.T @ R.T - T[None,:] # shape n*d
-                #tmp = np.sum(M * residual[:,None,:], axis = 2) # shape n*d
-                #loss = np.sum(residual * tmp)
-
-
+                center_matrix = np.linalg.inv(cov_data + np.einsum('ik,jkl,lm->jim', R, cov_ref, R.T))
                 loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
-                #losses = np.array([diff[i] @ np.linalg.solve(cov_data[i] + R @ cov_ref[i] @ R.T, diff[i]) for i in range(cov_data.shape[0])])
-                #loss_ = np.sum(losses)
-                print("loss = {}".format(loss_))
+                #print("loss = {}".format(loss_))
                 return loss_
-            print("--- Minimizing ---")
-            #grad = lambda args: grad_loss(args,a,b,M)
-            #x = minimize(loss, np.zeros(6), options={'maxiter': 10}, method = 'CG').x#, method = 'CG').x
-            #x = fmin_cg(f = loss, x0 = x, fprime = df, disp = False, full_output = True)[0]
-            #inv = lambda x: np.array([np.linalg.inv(cov_ref[i] + RotMatrix(x[:3]) @ cov_data[i] @ RotMatrix(x[:3]).T) for i in range(n)])
+            #print("--- Minimizing ---")
             df = lambda x: grad(x,data_0,ref_0,cov_data,cov_ref)
-            out = fmin_cg(f = loss, x0 = np.zeros(6), fprime = df, disp = True, full_output = True)
+            out = fmin_cg(f = loss, x0 = np.zeros(6), fprime = df, disp = False, full_output = True)
             x = out[0]
-            print("--- Solution found ---")
+            #print("--- Solution found ---")
             R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
         else:
             R, T = None

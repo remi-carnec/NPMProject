@@ -59,7 +59,7 @@ def compute_eigen_data(data, ref, algo, k = 10):
 
     # Covariance matrices
     if algo.name == 'plane2plane':
-        normal = True
+        normal = False
         if normal:
             args['cov_data'] = computeCovMat(data)
             args['cov_ref'] = computeCovMat(ref)
@@ -102,7 +102,6 @@ def RotDecompo(thetas):
     return R_x, R_y, R_z
 
 def RotMatrix(thetas):
-    #return R.from_euler('zyx', thetas)
     R_x, R_y, R_z = RotDecompo(thetas)
     return R_z @ R_y @ R_x
 
@@ -136,7 +135,7 @@ def skew(normals):
     sk = sk - sk.transpose(0,2,1)
     return sk
 
-def computeCovMat(cloud, eps = 1e-2):
+def computeCovMat(cloud, eps = 1e-3):
     n = cloud.shape[0]
     tree = KDTree(cloud)
     dist, indices = tree.query(cloud, k = 10)
@@ -294,19 +293,17 @@ def grad(x,a,b,cov_a,cov_b):
     returns:
         Value of the gradient of the loss function
     """
-    #start = time()
     t = x[3:]
     R = RotMatrix(x[:3])
     M = np.linalg.inv(cov_b + np.einsum('ik,jkl,lm->jim', R, cov_a, R.T))
 
     g = np.zeros(6)
     residual = b - a @ R.T -t[None,:] # shape n*d
-    tmp = np.sum(M * residual[:,None,:], axis = 2) # shape n*d
+    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
 
     g[3:] = - 2*np.sum(tmp, axis = 0)
     grad_R = - 2* (tmp.T @ a) # shape d*d
     grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
-    #print(time()-start)
     return g
 
