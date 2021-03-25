@@ -79,18 +79,18 @@ Eventually, we compare the performances of all three algorithms in terms of conv
 \subsection{Generalized-ICP}
 
 \section{Implementation}
-This section aims at giving some insight as to how the optimization is done for the different methods.
+In order to compare the different methods, we need to implement each optimization problem. This section aims at giving some insight as to how the optimization is done for each method.
 \begin{itemize}
     \item We have seen in class that we can write a close form solution for the standard ICP method. Again, the standard ICP loss writes:
     \begin{align*}
         l(R,t) = \sum_i  (b_i - R a_i -t)^T (b_i - R a_i -t)
     \end{align*}
     Computing the centered clouds $A^\prime = A - \hat{a}$ and $B^\prime = B - \hat{b}$, as well as the covariance matrix $H = A^\prime B^{\prime \, T}$, we find:
-    \begin{align*}
+    \begin{align}
         R &= VU^T \text{ and } T = \hat{b} - R \hat{a}
-    \end{align*}
+    \end{align}
     Where $USV^T$ is the singular value decomposition of $H$. Although \cite{generalized-icp} suggests to use the Conjugate Gradient method to find the solution, this is faster to use this expression.
-    \item When it comes to the \textit{point-to-plane} method, we need to minimize a more complex function. As suggested in \cite{generalized-icp}, we do so by using the \textit{Conjugate Gradient} algorithm. Python functions such as \texttt{scipy.optimize.minimize} allow to choose this method without providing the gradient. However, this is more expensive than having an exact formula for the gradient. Instead, we try to compute the gradient of the loss $l(R,t)$ to accelerate the optimization. Recall that:
+    \item When it comes to the \textit{point-to-plane} method, we need to minimize a more complex function. As suggested in \cite{generalized-icp}, we do so by using the \textit{Conjugate Gradient} algorithm. Python functions such as \texttt{scipy.optimize.minimize} allow to use this method without providing the gradient using an approximation. However, this is far more expensive than having an exact formula for the gradient. Instead, we try to compute the gradient of the loss $l(R,t)$ to accelerate the optimization. Recall that:
     \begin{align*}
         l(R,t) = \sum_i (b_i - R a_i -t)^T P_i (b_i - R a_i -t)
     \end{align*}
@@ -109,6 +109,24 @@ This section aims at giving some insight as to how the optimization is done for 
         \nabla_R l(R,t) = - 2 \sum_i P_i (b_i - R a_i -t) a_i^T
     \end{align}
     We can now directly provide the gradient as a callable function to the optimizer.
+    \item The \textit{Plane-to-plane} (Generalized-ICP) method is even more complex. The loss function is:
+    \begin{align*}
+        l(R,t) = \sum_i (b_i - Ra_i - t)^T \left(C_i^B + R C_i^A R^T\right)^{-1} (b_i - Ra_i - t)
+    \end{align*}
+    We first notice that the central term $\left(C_i^B + R C_i^A R^T\right)^{-1}$ requires inverting $n$ matrices. Moreover, while $P_i$ did not depend on the transformation $(R,t)$, this this term does. This means that everytime we compute the loss function or the gradient, we need to invert as many $3\times 3$ matrices as there are points. This shows how computationally expensive the Conjugate Gradient can be, especially if we approximate the gradient using several values of loss (numerical approximations), and highlights the necessity to find an exact formula for the gradient. Since the central term is independent of $t$, we first have: 
+    \begin{align}
+        \nabla_t l(R,t) = - 2 \sum_i \left(C_i^B + R C_i^A R^T\right)^{-1} (b_i - R a_i -t)
+    \end{align}
+    Now, we wish to compute $\nabla_R l(R,t)$. As explained before, the difference with \textit{Point-to-plane} is that the central term depends on $R$. We can still use the same reasoning as before, but we need to add another term due to this dependence. First, we write:
+    \begin{align*}
+        l(R,t) &= \sum_i \text{Tr}(\left(C_i^B + R C_i^A R^T\right)^{-1} (b_i - R a_i - t) (b_i - R a_i - t)^T)
+    \end{align*}
+    \cite{cookbook} states that for symmetric matrices $B$ and $C$, we have: $$\frac{\partial}{\partial X} \text{Tr}\left[(X^TCX)^{-1} A\right] = -(CX(X^TCX)^{-1})(A+A^T)(C^TCX)^{-1}$$
+    Along with a few well known properties of the trace, this is enough to compute the gradient. We finally obtain:
+    \begin{align}
+        \nabla_R l(R,t) =& - 2 \sum_i \left[ \left(C_i^B + R C_i^A R^T\right)^{-1} d_i a_i^T \right. \\ &+\left. \left(C_i^B + R C_i^A R^T\right)^{-1} d_i d_i^T \left(C_i^B + R C_i^A R^T\right)^{-1} R C_i^A\right] \nonumber
+    \end{align}
+    Where we denoted $d_i = b_i - R a_i - t$.
 \end{itemize}
 Note that for \textit{Point-to-plane} and \textit{Plane-to-plane}, our work does not stop here: $R$ has to be a rotation matrix. To satisfy this constraint, we use Euler's formulation to express $R$ as a function of three angles: $\theta_x, \, \theta_y, \, \theta_z$.
 
