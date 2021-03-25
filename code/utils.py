@@ -37,14 +37,14 @@ def PCA(points):
 
     # Compute Cov matrix
     N = points.shape[0]
-    cov = (centered_points.T @ centered_points)/N
+    cov = (centered_points.T @ centered_points)/N #np.einsum('ij,ik->kj', centered_points, centered_points)/N
 
     # Compute eigenvectors and eigenvalues
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
 
     return eigenvalues, eigenvectors
 
-def compute_eigen_data(data, ref, algo, k = 10):
+def compute_eigen_data(data, ref, algo, k = 10, eps = 1e-3):
     # Compute eigenvectors, projection matrices
     tree = KDTree(ref)
     dist, indices = tree.query(ref, k = k)
@@ -59,7 +59,7 @@ def compute_eigen_data(data, ref, algo, k = 10):
 
     # Covariance matrices
     if algo.name == 'plane2plane':
-        normal = False
+        normal = True
         if normal:
             args['cov_data'] = computeCovMat(data)
             args['cov_ref'] = computeCovMat(ref)
@@ -135,10 +135,10 @@ def skew(normals):
     sk = sk - sk.transpose(0,2,1)
     return sk
 
-def computeCovMat(cloud, eps = 1e-3):
+def computeCovMat(cloud, k = 10, eps = 1e-3):
     n = cloud.shape[0]
     tree = KDTree(cloud)
-    dist, indices = tree.query(cloud, k = 10)
+    dist, indices = tree.query(cloud, k = k)
     covMat, all_eigenvectors = np.zeros((n, 3, 3)), np.zeros((n, 3, 3))
     for k in tqdm(range(n), desc = 'Covariance'):
         _, eigenvectors = PCA(cloud[indices[k]])
@@ -149,20 +149,15 @@ def computeCovMat(cloud, eps = 1e-3):
     return Cov
 
 def computeCovTest(cloud):
-    d = 3
-    new_n = cloud.shape[0]
-    cov_mat = np.zeros((new_n,d,d))
-
+    n = cloud.shape[0]
     tree = KDTree(cloud)
     dist, indices = tree.query(cloud, k = 10)
-    all_eigenvectors = np.zeros((new_n, 3, 3))
-    for k in tqdm(range(new_n), desc = 'Covariance'):
+    cov_mat, all_eigenvectors = np.zeros((n,3,3)), np.zeros((n, 3, 3))
+    for k in tqdm(range(n), desc = 'Covariance'):
         eigenvalues, eigenvectors = PCA(cloud[indices[k]])
         all_eigenvectors[k] = eigenvectors
-
-    dz_cov_mat = np.eye(d)
-    dz_cov_mat[0,0] = 1e-2
-    for i in range(new_n):
+    dz_cov_mat = np.diag([1e-3, 1, 1])
+    for i in range(n):
         U = all_eigenvectors[i]
         cov_mat[i,:,:] = U @ dz_cov_mat @ U.T
 
@@ -301,8 +296,35 @@ def grad(x,a,b,cov_a,cov_b):
     residual = b - a @ R.T -t[None,:] # shape n*d
     tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
 
-    g[3:] = - 2*np.sum(tmp, axis = 0)
-    grad_R = - 2* (tmp.T @ a) # shape d*d
+    g[3:] = - 2 * np.einsum('ij->j',tmp)
+    outer = np.einsum('ij,il->ijl', tmp, tmp)
+    grad_R = - 2 * np.einsum('ij,il->jl',tmp,a) - 2 * np.einsum('ijk,kl,ilm->jm', cov_a, R.T, outer).T
+    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
+    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
+    return g
+
+def grad_2(x, ref, data, proj_matrices):
+    """
+    Gradient of the loss loss for parameter x
+    params:
+        x : length 6 vector of transformation parameters
+            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
+        a : data to align n*3
+        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
+        M : central matrix for each data point n*3*3 (cf loss equation)
+    returns:
+        Value of the gradient of the loss function
+    """
+    t = x[3:]
+    R = RotMatrix(x[:3])
+    M = proj_matrices
+
+    g = np.zeros(6)
+    residual = ref - data @ R.T - t[None,:] # shape n*d
+    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
+
+    g[3:] = - 2 * np.einsum('ij->j',tmp)
+    grad_R = - 2 * np.einsum('ij,il->jl', tmp, data)
     grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
     return g

@@ -25,7 +25,14 @@ class Algorithm:
                 R, T = RotMatrix(x[:3]), x[3:]
                 diff = ref_0 - (data_0 @ R.T + T[None,:])
                 return np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', projMatrices, diff))
-            x = minimize(loss, np.zeros(6), method = 'CG').x
+            opt = 1
+            if opt == 0:
+                x = minimize(loss, np.zeros(6), method = 'CG').x
+            else:
+                df = lambda x: grad_2(x, ref_0, data_0, projMatrices)
+                #out = fmin_cg(f = loss, x0 = np.zeros(6), fprime = df, disp = False, full_output = True)#, maxiter=20)
+                #x = out[0]
+                x = minimize(loss, jac = df, x0 = np.zeros(6), method = 'CG').x
             R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
 
         # Generalized ICP
@@ -87,19 +94,24 @@ class Algorithm:
         elif self.name == "plane2plane":
             cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
             ref_0, data_0 = ref[:,indices_ref].T, data[:,indices_data].T
-            def loss(args):
-                R, T = RotMatrix(args[:3]), args[3:]
+            def loss(x):
+                R, T = RotMatrix(x[:3]), x[3:]
                 diff = ref_0 - (data_0 @ R.T + T[None,:])
-                center_matrix = np.linalg.inv(cov_data + np.einsum('ik,jkl,lm->jim', R, cov_ref, R.T))
+                center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
                 loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
-                #print("loss = {}".format(loss_))
+                print("loss = {}".format(loss_))
                 return loss_
             #print("--- Minimizing ---")
-            df = lambda x: grad(x,data_0,ref_0,cov_data,cov_ref)
-            out = fmin_cg(f = loss, x0 = np.zeros(6), fprime = df, disp = False, full_output = True)
+            df = lambda x: grad(x, a = data_0, b = ref_0, cov_a = cov_data, cov_b = cov_ref)
+            out = fmin_cg(f = loss, x0 = np.zeros(6), fprime = df, disp = False, full_output = True, maxiter=20)
             x = out[0]
+            #x = minimize(loss, x0 = np.zeros(6), method = 'CG').x
             #print("--- Solution found ---")
             R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
         else:
             R, T = None
         return R, T
+
+# test_loss = lambda t: (ref_0[idx] - t - R @ data_0[idx]) @ center_matrix[idx] @ (ref_0[idx] - t - R @ data_0[idx])
+# test_grad_loss = lambda t: - 2 * center_matrix[idx] @ (ref_0[idx] - t - R @ data_0[idx])
+#a,b,cov_a,cov_b = data_0, ref_0, cov_data, cov_ref

@@ -26,14 +26,22 @@ if __name__ == '__main__':
     bunny_p = np.vstack((bunny_p_ply['x'], bunny_p_ply['y'], bunny_p_ply['z']))
 
     # Apply ICP
-    algos = [Algorithm('plane2plane'), Algorithm('point2plane'), Algorithm('point2point')]
-    #algo = Algorithm('point2point')
-    for algo in algos:
+    comparison = False
+    if comparison:
+        plt.title("Convergence of the different methods")
+        algos = [Algorithm('plane2plane'), Algorithm('point2plane'), Algorithm('point2point')]
+        for algo in algos:
+            start = time()
+            bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-5)
+            print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
+            plt.plot(RMS_list, label = algo.name)
+    else:
+        algo = Algorithm('point2plane')
         start = time()
         bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-5)
         print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
         plt.plot(RMS_list, label = algo.name)
-
+        plt.title(algo.name)
     # Show ICP
     #show_ICP(bunny_p, bunny_o, R_list, T_list, neighbors_list)
 

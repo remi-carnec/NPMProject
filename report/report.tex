@@ -1,0 +1,147 @@
+\documentclass[11pt,letterpaper,leqno]{article}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage[legalpaper]{geometry}
+\usepackage[colorlinks,allcolors=red]{hyperref}
+\usepackage{amsmath}
+\usepackage{bbm}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm2e}
+\usepackage{stmaryrd}
+
+\usepackage[justification=centering]{caption}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\geometry{top=3cm,bottom=3cm}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}[theorem]
+
+
+%\title{Project report on Computational Methods for Martingale Optimal Transport problems}
+\author{Rémi Carnec}
+\date{}
+\newcommand{\lecture}[3]{
+   \pagestyle{myheadings}
+   \thispagestyle{plain}
+   \newpage
+   \setcounter{page}{1}
+   \noindent
+   \begin{center}
+   \framebox{
+      \vbox{\vspace{2mm}
+              \hbox to .97\textwidth { {\bf MVA: NPM3D (2020/2021) \hfill Final Project} }
+       \vspace{6mm}
+       \hbox to .97\textwidth { {\Large \hfill #1 \hfill } }
+       \vspace{6mm}
+       
+      \vspace{2mm}}
+   }
+   \end{center}
+   Work by \textit{Remi CARNEC}
+   \markboth{#1}{#1}
+   \vspace*{4mm}
+}
+\begin{document}
+\lecture{Generalized-ICP}{1}
+
+\tableofcontents
+
+\break
+
+\section{Abstract}
+
+\section{Introduction}
+
+Generalized Iterative Closest Point (Generalized-ICP) was introduced by Segal et. al. \cite{generalized-icp}. This algorithm can for instance be used for Scanmatching - to align two point clouds. It lies at the crossing of the two following methods, and combines them into a probabilistic framework:
+\begin{itemize}
+    \item The standard ICP, introduced in \cite{icp}.
+    \item The Point-to-plane method, introduced in \cite{point2plane}.
+\end{itemize}
+It is argued in \cite{generalized-icp} that Generalized-ICP outperforms these two methods in numerous datasets, in addition to giving a flexible probabilistic interpretation. In this report, we first briefly recall the basic principles of standard ICP and point-to-plane. We then start giving more details about the Generalized-ICP approach, its probabilistic interpretation, the algorithm as well as our implementation.
+Eventually, we compare the performances of all three algorithms in terms of convergence and computational time.
+
+\section{The algorithm}
+
+\subsection{Standard ICP}
+
+\subsection{Point-to-plane}
+
+\subsection{Generalized-ICP}
+
+\section{Implementation}
+This section aims at giving some insight as to how the optimization is done for the different methods.
+\begin{itemize}
+    \item We have seen in class that we can write a close form solution for the standard ICP method. Again, the standard ICP loss writes:
+    \begin{align*}
+        l(R,t) = \sum_i  (b_i - R a_i -t)^T (b_i - R a_i -t)
+    \end{align*}
+    Computing the centered clouds $A^\prime = A - \hat{a}$ and $B^\prime = B - \hat{b}$, as well as the covariance matrix $H = A^\prime B^{\prime \, T}$, we find:
+    \begin{align*}
+        R &= VU^T \text{ and } T = \hat{b} - R \hat{a}
+    \end{align*}
+    Where $USV^T$ is the singular value decomposition of $H$. Although \cite{generalized-icp} suggests to use the Conjugate Gradient method to find the solution, this is faster to use this expression.
+    \item When it comes to the \textit{point-to-plane} method, we need to minimize a more complex function. As suggested in \cite{generalized-icp}, we do so by using the \textit{Conjugate Gradient} algorithm. Python functions such as \texttt{scipy.optimize.minimize} allow to choose this method without providing the gradient. However, this is more expensive than having an exact formula for the gradient. Instead, we try to compute the gradient of the loss $l(R,t)$ to accelerate the optimization. Recall that:
+    \begin{align*}
+        l(R,t) = \sum_i (b_i - R a_i -t)^T P_i (b_i - R a_i -t)
+    \end{align*}
+    On the one hand, we have:
+    \begin{align}
+        \nabla_t l(R,t) = - 2 \sum_i P_i (b_i - R a_i -t)
+    \end{align}
+    On the other hand, we can write and develop the loss function as:
+    \begin{align*}
+        l(R,t) &= \sum_i \text{Tr}(P_i (b_i - R a_i - t) (b_i - R a_i - t)^T) \\
+        &= \sum_i \text{Tr}\left(P_i \left( (b_i - t)(b_i - t)^T + R a_i a_i^T R^T - (b_i-t)a_i^T R^T - R a_i(b_i-t)^T\right) \right)\\
+        &= \sum_i \text{Tr}\left(P_i (b_i - t)(b_i - t)^T \right) +\sum_i \text{Tr}\left(R a_i a_i^T R^T P_i\right) - 2\sum_i \text{Tr}\left(R a_i(b_i-t)^T P_i\right)
+    \end{align*}
+    Now, using the facts that $\frac{\partial}{\partial X} \text{Tr}(XB) = B^T$ and $\frac{\partial}{\partial X} \text{Tr}(X^TBXC) = BXC + B^TXC^T$ (cf \cite{cookbook}), we obtain:
+    \begin{align}
+        \nabla_R l(R,t) = - 2 \sum_i P_i (b_i - R a_i -t) a_i^T
+    \end{align}
+    We can now directly provide the gradient as a callable function to the optimizer.
+\end{itemize}
+Note that for \textit{Point-to-plane} and \textit{Plane-to-plane}, our work does not stop here: $R$ has to be a rotation matrix. To satisfy this constraint, we use Euler's formulation to express $R$ as a function of three angles: $\theta_x, \, \theta_y, \, \theta_z$.
+
+
+
+\section{Experiments}
+
+\section{Conclusion}
+
+\break
+
+\begin{thebibliography}{9}
+
+    \bibitem{icp} 
+    Besl P. and McKay H.
+    \textit{A method for registration of 3-D shapes}. 
+    IEEE Trans. Pattern Anal. Mach. Intell., 1992
+
+    \bibitem{point2plane} 
+    Kok-Lim Low.
+    \textit{Linear Least-Squares Optimization for
+    Point-to-Plane ICP Surface Registration}. 
+    University of North Carolina, 2004
+
+    \bibitem{generalized-icp} 
+    Aleksandr V. Segal, Dirk Haehnel and Sebastian Thrun.
+    \textit{Generalized-ICP}. 
+    Robotics: Science and Systems, 2009
+
+    \bibitem{cookbook} 
+    Kaare Brandt Petersen, Michael Syskind Pedersen
+    \textit{The Matrix Cookbook}. 2005
+
+\end{thebibliography}
+
+\end{document}
