@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.4.11)  27 MAR 2021 08:15
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.4.11)  27 MAR 2021 23:37
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -557,9 +557,6 @@ LaTeX Font Info:    Try loading font information for U+stmry on input line 5.
 \tf@toc=\write4
 \openout4 = `report.toc'.
 
- [1
-
-{/usr/local/texlive/2018/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 LaTeX Font Info:    Try loading font information for OMS+cmr on input line 73.
  (/usr/local/texlive/2018/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
@@ -572,42 +569,129 @@ Overfull \hbox (8.07918pt too wide) in paragraph at lines 76--78
  []
 
 
+Overfull \hbox (5.90306pt too wide) in paragraph at lines 84--85
+[]\T1/cmr/m/n/10.95 Computing a trans-for-ma-tion $\OML/cmm/m/it/10.95 T \OT1/cmr/m/n/10.95 = (\OML/cmm/m/it/10.95 R; t\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 that min-i-mizes a cer-tain loss $\OML/cmm/m/it/10.95 l\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R; t; \OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 m[]\OT1/cmr/m/n/10.95 )[]\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 b[]\OT1/cmr/m/n/10.95 )[])$\T1/cmr/m/n/10.95 . 
+ []
+
+
 Underfull \hbox (badness 10000) in paragraph at lines 86--87
 
  []
 
+[1
+
+{/usr/local/texlive/2018/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 LaTeX Font Info:    Try loading font information for T1+cmtt on input line 103.
-(/usr/local/texlive/2018/texmf-dist/tex/latex/base/t1cmtt.fd
+ (/usr/local/texlive/2018/texmf-dist/tex/latex/base/t1cmtt.fd
 File: t1cmtt.fd 2014/09/29 v2.5h Standard LaTeX font definitions
-) [2]
-Overfull \hbox (6.31862pt too wide) detected at line 138
+)
+<img/point2plane.png, id=94, 1043.9pt x 599.23875pt>
+File: img/point2plane.png Graphic file (type png)
+<use img/point2plane.png>
+Package pdftex.def Info: img/point2plane.png  used on input line 122.
+(pdftex.def)             Requested size: 301.00192pt x 172.78728pt.
+ [2 <./img/point2plane.png>]
+Overfull \hbox (6.31862pt too wide) detected at line 176
 []
  []
 
 [3] [4]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 197.
- [5]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 197.
+<img/comparison_1_clouds.png, id=144, 526.96875pt x 490.83376pt>
+File: img/comparison_1_clouds.png Graphic file (type png)
+<use img/comparison_1_clouds.png>
+Package pdftex.def Info: img/comparison_1_clouds.png  used on input line 225.
+(pdftex.def)             Requested size: 215.0023pt x 200.26201pt.
+<img/comparison_1.png, id=145, 462.528pt x 346.896pt>
+File: img/comparison_1.png Graphic file (type png)
+<use img/comparison_1.png>
+Package pdftex.def Info: img/comparison_1.png  used on input line 228.
+(pdftex.def)             Requested size: 215.0023pt x 161.25203pt.
+<img/comparison_2_cloud.png, id=147, 524.96124pt x 413.545pt>
+File: img/comparison_2_cloud.png Graphic file (type png)
+<use img/comparison_2_cloud.png>
+Package pdftex.def Info: img/comparison_2_cloud.png  used on input line 239.
+(pdftex.def)             Requested size: 215.0023pt x 169.37154pt.
+<img/comparison_2.png, id=148, 462.528pt x 346.896pt>
+File: img/comparison_2.png Graphic file (type png)
+<use img/comparison_2.png>
+Package pdftex.def Info: img/comparison_2.png  used on input line 242.
+(pdftex.def)             Requested size: 215.0023pt x 161.25203pt.
+ [5 <./img/comparison_1_clouds.png> <./img/comparison_1.png>]
+<img/comparison_3.png, id=160, 642.4pt x 481.8pt>
+File: img/comparison_3.png Graphic file (type png)
+<use img/comparison_3.png>
+Package pdftex.def Info: img/comparison_3.png  used on input line 253.
+(pdftex.def)             Requested size: 215.0023pt x 161.25145pt.
+<img/comparison_4.png, id=161, 462.528pt x 346.896pt>
+File: img/comparison_4.png Graphic file (type png)
+<use img/comparison_4.png>
+Package pdftex.def Info: img/comparison_4.png  used on input line 257.
+(pdftex.def)             Requested size: 215.0023pt x 161.25203pt.
+<img/comparison_5_clouds.png, id=163, 454.69875pt x 469.755pt>
+File: img/comparison_5_clouds.png Graphic file (type png)
+<use img/comparison_5_clouds.png>
+Package pdftex.def Info: img/comparison_5_clouds.png  used on input line 268.
+(pdftex.def)             Requested size: 171.99922pt x 177.69162pt.
+<img/comparison_5.png, id=164, 462.528pt x 346.896pt>
+File: img/comparison_5.png Graphic file (type png)
+<use img/comparison_5.png>
+Package pdftex.def Info: img/comparison_5.png  used on input line 271.
+(pdftex.def)             Requested size: 215.0023pt x 161.25203pt.
+<img/comparison_6_clouds.png, id=165, 460.72125pt x 413.545pt>
+File: img/comparison_6_clouds.png Graphic file (type png)
+<use img/comparison_6_clouds.png>
+Package pdftex.def Info: img/comparison_6_clouds.png  used on input line 274.
+(pdftex.def)             Requested size: 215.0023pt x 192.98424pt.
+<img/comparison_6.png, id=166, 642.4pt x 481.8pt>
+File: img/comparison_6.png Graphic file (type png)
+<use img/comparison_6.png>
+Package pdftex.def Info: img/comparison_6.png  used on input line 277.
+(pdftex.def)             Requested size: 215.0023pt x 161.25145pt.
+<img/maxiter.png, id=170, 462.528pt x 346.896pt>
+File: img/maxiter.png Graphic file (type png)
+<use img/maxiter.png>
+Package pdftex.def Info: img/maxiter.png  used on input line 295.
+(pdftex.def)             Requested size: 258.00539pt x 193.51408pt.
+ [6 <./img/comparison_2_cloud.png> <./img/comparison_2.png> <./img/comparison_3.png (PNG copy)> <./img/comparison_4.png>]
+Overfull \hbox (27.37506pt too wide) in paragraph at lines 300--313
+[]$[]$ 
+ []
+
+[7 <./img/comparison_5_clouds.png> <./img/comparison_5.png> <./img/comparison_6_clouds.png> <./img/comparison_6.png (PNG copy)> <./img/maxiter.png>]
+<img/comparison_relaxed_1.png, id=193, 642.4pt x 481.8pt>
+File: img/comparison_relaxed_1.png Graphic file (type png)
+<use img/comparison_relaxed_1.png>
+Package pdftex.def Info: img/comparison_relaxed_1.png  used on input line 318.
+(pdftex.def)             Requested size: 215.0023pt x 161.25145pt.
+<img/comparison_relaxed.png, id=194, 462.528pt x 346.896pt>
+File: img/comparison_relaxed.png Graphic file (type png)
+<use img/comparison_relaxed.png>
+Package pdftex.def Info: img/comparison_relaxed.png  used on input line 321.
+(pdftex.def)             Requested size: 215.0023pt x 161.25203pt.
+ [8 <./img/comparison_relaxed_1.png (PNG copy)> <./img/comparison_relaxed.png>]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 359.
+ [9]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 359.
  (/Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 197.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 197.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 359.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 359.
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: E63C1418501FDF04E54AF090D5709DE3;466.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 197.
+(rerunfilecheck)             Checksum: 801BE6C5EE9D505FB60F43EE74877F5D;735.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 359.
  ) 
 Here is how much of TeX's memory you used:
- 12460 strings out of 492649
- 186186 string characters out of 6129622
- 312531 words of memory out of 5000000
- 16134 multiletter control sequences out of 15000+600000
+ 12576 strings out of 492649
+ 188557 string characters out of 6129622
+ 314637 words of memory out of 5000000
+ 16216 multiletter control sequences out of 15000+600000
  17520 words of font info for 48 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 42i,16n,40p,736b,480s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2018/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm1440.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfsl1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on "/Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.pdf" (5 pages, 265467 bytes).
+ 42i,16n,46p,790b,594s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2018/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfrm1440.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfsl1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb>
+Output written on "/Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.pdf" (9 pages, 719820 bytes).
 PDF statistics:
- 168 PDF objects out of 1000 (max. 8388607)
- 143 compressed objects within 2 object streams
- 28 named destinations out of 1000 (max. 500000)
- 73 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 280 PDF objects out of 1000 (max. 8388607)
+ 222 compressed objects within 3 object streams
+ 46 named destinations out of 1000 (max. 500000)
+ 175 words of extra memory for PDF output out of 10000 (max. 10000000)
 

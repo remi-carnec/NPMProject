@@ -1,92 +1,81 @@
-import numpy as np
 from utils import *
-from scipy.optimize import minimize, fmin_cg
-from time import time
-
+from scipy.optimize import minimize
 
 class Algorithm:
-    def __init__(self, name):
-        if name == 'point2point' or name == 'point2plane' or name == 'plane2plane':
+    def __init__(self, name, config_algo = dict()):
+        if name == 'point-to-point' or name == 'point-to-plane' or name == 'plane-to-plane':
             self.name = name
+            self.config_algo = config_algo
+            if name == 'plane-to-plane':
+                if 'relaxed_gradient' not in config_algo.keys():
+                    self.config_algo['relaxed_gradient'] = False
+                if 'max_iter' not in config_algo.keys():
+                    self.config_algo['relaxed_gradient'] = 10
         else:
-            self.name = None
-            print("Error in initialization of algorithm: unknown name")
+            raise ValueError("Error in initialization of algorithm: unknown name \"" + name + "\"")
 
-    def findBestTransform(self, data, ref, indices_data, indices_ref, x0, args):
+    def findBestTransform(self, data, ref, indices_data, indices_ref, args, x0):
         # Standard ICP
-        if self.name == 'point2point':
+        if self.name == 'point-to-point':
             x = None
             R, T = best_rigid_transform(data[:,indices_data], ref[:,indices_ref])
 
         # Point to Plane
-        elif self.name == 'point2plane':
+        elif self.name == 'point-to-plane':
+            # Initialize data
             projMatrices = args['projMatrices'][indices_ref]
             ref_0, data_0 = ref[:,indices_ref].T, data[:,indices_data].T
-            #def loss(x):
-            #    R, T = RotMatrix(x[:3]), x[3:]
-            #    diff = ref_0 - (data_0 @ R.T + T[None,:])
-            #    return np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', projMatrices, diff))
+
+            # Find argmin using CG
             loss_f = lambda x: loss(x, ref_0, data_0, projMatrices)
-            opt = 1
-            if opt == 0:
-                x = minimize(loss_f, np.zeros(6), method = 'CG').x
-            else:
-                grad_f = lambda x: grad_2(x, ref_0, data_0, projMatrices)
-                x = minimize(loss_f, jac = grad_f, x0 =x0, method = 'CG').x
+            grad_f = lambda x: grad(x, ref_0, data_0, projMatrices)
+            x = minimize(loss_f, jac = grad_f, x0 = np.zeros(6), method = 'CG').x
             R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
 
-        # Generalized ICP
-        elif self.name == 'plane2plane' and True:
+        # Generalized ICP - Exact gradient
+        elif self.name == "plane-to-plane" and not self.config_algo['relaxed_gradient']:
+            # Store data
             cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
-            x = x0
-            tol = 1e-6
-            ref_0, data_0 = ref.T[indices_ref], data.T[indices_data]
-            prev_min_loss = np.inf#, loss(x, ref_0, data_0, None, True)
-            iter, max_iter = 0, 20
+            ref_0, data_0 = ref[:,indices_ref].T, data[:,indices_data].T
 
+            # Find argmin using exact CG
+            loss_f = lambda x: loss(x, ref_0, data_0, None, cov_ref, cov_data)
+            grad_loss = lambda x: grad(x, ref_0, data_0, None, cov_ref, cov_data)
+            x = minimize(fun = loss_f, jac = grad_loss, x0 = x0, method = 'CG', options={'maxiter': self.config_algo['max_iter']}).x
+            R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
+
+        # Generalized ICP - Relaxed gradient
+        elif self.name == 'plane-to-plane' and self.config_algo['relaxed_gradient']:
+            # Store data
+            cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
+            ref_0, data_0 = ref.T[indices_ref], data.T[indices_data]
+
+            # Initialize
+            tol = 1e-6
+            iter, max_iter = 0, 20
+            x = np.zeros(6)
+
+            # Find argmin with relaxed gradient method
             while True:
+                # Fix central term
                 iter = iter+1
                 R = RotMatrix(x[:3])
                 center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
 
+                # Perform optimization using relaxed CG
                 loss_f = lambda x: loss(x, ref_0, data_0, center_matrix)
-                grad_loss = lambda x: grad_relaxed(x, data_0, ref_0, center_matrix)
-                res = minimize(loss_f, x0, jac = grad_loss, method = 'CG')
+                grad_loss = lambda x: grad(x, ref_0, data_0, center_matrix)#grad_relaxed(x,data_0,ref_0,center_matrix)
+                res = minimize(loss_f, x0, jac = grad_loss, method = 'CG', options={'maxiter': self.config_algo['max_iter']})
                 x, min_loss = res.x, res.fun
+                prev_min_loss = min_loss
 
-                if abs(prev_min_loss - min_loss) < tol:
-                    print("1")
+                # Stopping rule: convergence or max_iter
+                if abs(prev_min_loss - min_loss) < tol or iter >= max_iter:
                     break
-                elif iter >= max_iter:
-                    print("2")
-                    break
-                else:
-                    prev_min_loss = min_loss
             T = x[3:].reshape(-1,1)
             R = RotMatrix(x[:3])
 
-        elif self.name == "plane2plane" and False:
-            cov_data, cov_ref = args['cov_data'][indices_data], args['cov_ref'][indices_ref]
-            ref_0, data_0 = ref[:,indices_ref].T, data[:,indices_data].T
-            #def loss_pl2pl(x):
-            #    R, T = RotMatrix(x[:3]), x[3:]
-            #    diff = ref_0 - (data_0 @ R.T + T[None,:])
-            #    center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
-            #    loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
-            #    print("loss = {}".format(loss_))
-            #    return loss_
-            #print("--- Minimizing ---")
-            loss_f = lambda x: loss(x, ref_0, data_0, None, cov_ref, cov_data)
-            df = lambda x: grad(x, a = data_0, b = ref_0, cov_a = cov_data, cov_b = cov_ref)
-            out = fmin_cg(f = loss_f, x0 = x0, fprime = df, disp = False, full_output = True, maxiter=20)
-            x = out[0]
-            #x = minimize(loss, jac = df, x0 = x0, method = 'CG', options={'maxiter':20}).x
-            #print("--- Solution found ---")
-            R, T = RotMatrix(x[:3]), x[3:].reshape(-1,1)
+        # Error
         else:
-            R, T = None
+            raise ValueError('Error with name of algorithm')
         return R, T, x
-
-# test_loss = lambda t: (ref_0[idx] - t - R @ data_0[idx]) @ center_matrix[idx] @ (ref_0[idx] - t - R @ data_0[idx])
-# test_grad_loss = lambda t: - 2 * center_matrix[idx] @ (ref_0[idx] - t - R @ data_0[idx])
-#a,b,cov_a,cov_b = data_0, ref_0, cov_data, cov_ref

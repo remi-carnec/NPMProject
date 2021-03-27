@@ -1,10 +1,14 @@
 \babel@toc {english}{}
-\contentsline {section}{\numberline {1}Abstract}{2}{section.1}
-\contentsline {section}{\numberline {2}Introduction}{2}{section.2}
-\contentsline {section}{\numberline {3}The algorithm}{2}{section.3}
+\contentsline {section}{\numberline {1}Abstract}{1}{section.1}
+\contentsline {section}{\numberline {2}Introduction}{1}{section.2}
+\contentsline {section}{\numberline {3}The algorithm}{1}{section.3}
 \contentsline {subsection}{\numberline {3.1}Standard ICP}{2}{subsection.3.1}
 \contentsline {subsection}{\numberline {3.2}Point-to-plane}{2}{subsection.3.2}
 \contentsline {subsection}{\numberline {3.3}Generalized-ICP}{2}{subsection.3.3}
-\contentsline {section}{\numberline {4}Implementation}{2}{section.4}
-\contentsline {section}{\numberline {5}Experiments}{4}{section.5}
-\contentsline {section}{\numberline {6}Conclusion}{4}{section.6}
+\contentsline {section}{\numberline {4}Implementation}{3}{section.4}
+\contentsline {subsection}{\numberline {4.1}Mathematical foundation}{3}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Implementation strategy}{5}{subsection.4.2}
+\contentsline {section}{\numberline {5}Experiments}{5}{section.5}
+\contentsline {subsection}{\numberline {5.1}Comparisons}{5}{subsection.5.1}
+\contentsline {section}{\numberline {6}Improving Generalized-ICP?}{6}{section.6}
+\contentsline {section}{\numberline {7}Conclusion}{8}{section.7}

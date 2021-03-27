@@ -4,22 +4,24 @@ from sklearn.neighbors import KDTree
 from utils import compute_eigen_data
 
 # Find best transformation
-def optimize(data, ref, algo, max_iter, RMS_threshold):
+def optimize(data, ref, algo, config):
     # Initiate lists
     RMS_list = []
 
     # Precalculate
     args = None
-    if algo.name == "point2plane" or algo.name == "plane2plane":
+    if algo.name == "point-to-plane" or algo.name == "plane-to-plane":
+        print("---------------------")
         print("Precalculating data:")
-        tree, args = compute_eigen_data(data.T, ref.T, algo, k = 20)
-        print("Done")
+        tree, args = compute_eigen_data(data.T, ref.T, algo, k = config['kNeighbors'])
+        print("---------------------")
     else:
         tree = KDTree(ref.T)
 
     # Initialize
+    max_iter, dist_threshold, RMS_threshold = config['max_iter'], config['dist_threshold'], config['RMS_threshold']
     rms = RMS_threshold
-    dist_threshold = 0.05
+    rms_min = np.inf
     data_aligned = data.copy()
     n = data.shape[1]
     iter = 0
@@ -34,15 +36,20 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
         indices_data = np.arange(n)[account]
 
         # Compute and apply transformation
-        R, T, x = algo.findBestTransform(data_aligned, ref, indices_data, indices_ref, x, args)
+        R, T, x = algo.findBestTransform(data_aligned, ref, indices_data, indices_ref, args, x)
         data_aligned = R @ data_aligned + T
 
         # Update loss
-        rms = np.sqrt(np.mean(np.sum(np.power(data_aligned - ref[:,indices_ref], 2), axis=0)))
+        rms = np.sqrt(np.mean(np.sum(np.power(data_aligned - ref[:,neighbors.flatten()], 2), axis=0)))
         print("rms = {}".format(rms))
 
         # Store transformation
         RMS_list.append(rms)
+        iter += 1
+        if rms < rms_min:
+            R_min, T_min = R.copy(), T.copy()
+            rms_min = rms
+    print("needed {} iterations".format(iter))
 
-    return data_aligned, RMS_list
+    return data_aligned, RMS_list, R_min, T_min
 

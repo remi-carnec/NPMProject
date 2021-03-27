@@ -5,7 +5,6 @@ from matplotlib import collections as mc
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.neighbors import KDTree
 from tqdm import tqdm
-from scipy.spatial.transform import Rotation as R
 
 
 def best_rigid_transform(data, ref):
@@ -37,7 +36,7 @@ def PCA(points):
 
     # Compute Cov matrix
     N = points.shape[0]
-    cov = (centered_points.T @ centered_points)/N #np.einsum('ij,ik->kj', centered_points, centered_points)/N
+    cov = (centered_points.T @ centered_points)/N
 
     # Compute eigenvectors and eigenvalues
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
@@ -50,45 +49,24 @@ def compute_eigen_data(data, ref, algo, k = 10, eps = 1e-3):
     dist, indices = tree.query(ref, k = k)
     all_eigenvalues = np.zeros((ref.shape[0], 3))
     all_eigenvectors = np.zeros((ref.shape[0], 3, 3))
-    for k in tqdm(range(ref.shape[0]), desc = 'Eigenvectors'):
-        eigenvalues, eigenvectors = PCA(ref[indices[k]])
-        all_eigenvalues[k] = eigenvalues
-        all_eigenvectors[k] = eigenvectors
+    for i in tqdm(range(ref.shape[0]), desc = 'Eigenvectors'):
+        eigenvalues, eigenvectors = PCA(ref[indices[i]])
+        all_eigenvalues[i] = eigenvalues
+        all_eigenvectors[i] = eigenvectors
     projMatrices = np.einsum('ij,ik->ijk', all_eigenvectors[:,0], all_eigenvectors[:,0])
     args = {'eigenvalues': all_eigenvalues, 'eigenvectors': all_eigenvectors, 'projMatrices': projMatrices}
 
     # Covariance matrices
-    if algo.name == 'plane2plane':
+    if algo.name == 'plane-to-plane':
         normal = False
         if normal:
-            args['cov_data'] = computeCovMat(data)
-            args['cov_ref'] = computeCovMat(ref)
+            args['cov_data'] = computeCovMat(data, None, k = k, eps = eps)
+            args['cov_ref'] = computeCovMat(ref, eigenvectors, k = k, eps = eps)
         else:
-            args['cov_data'] = computeCovTest(data)
-            args['cov_ref'] = computeCovTest(ref)
+            args['cov_data'] = computeCovTest(data, None, k = k, eps = eps)
+            args['cov_ref'] = computeCovTest(ref, eigenvectors, k = k, eps = eps)
 
     return tree, args
-
-
-def compute_local_PCA(query_points, cloud_points, dataCloud, radius, k = None, showProgress = True):
-    # Compute neighbors using radius or N-nearest neighbors
-    tree = KDTree(cloud_points)
-    if k == None:
-        indices = tree.query_radius(query_points, r = radius)
-    else:
-        dist, indices = tree.query(query_points, k = k)
-
-    # Compute eigenvectors and eigenvalues for each query point
-    all_eigenvalues = np.zeros((query_points.shape[0], 3))
-    all_eigenvectors = np.zeros((query_points.shape[0], 3, 3))
-    range_ = tqdm(range(query_points.shape[0])) if showProgress else range(query_points.shape[0])
-    for k in range_:
-        eigenvalues, eigenvectors = PCA(cloud_points[indices[k]])
-        all_eigenvalues[k] = eigenvalues
-        all_eigenvectors[k] = eigenvectors
-
-    return all_eigenvalues, all_eigenvectors
-
 
 def ProjMatrix(indices_ref, eigen_data):
     all_eigenvalues, all_eigenvectors = eigen_data[0][indices_ref], eigen_data[1][indices_ref]
@@ -123,7 +101,6 @@ def computeRotations(eigenvectors):
 def computeRotationFromVectors(normals):
     e1 = np.array([1, 0, 0])
     v = np.apply_along_axis(lambda x: np.cross(e1, x), axis=1, arr = normals)
-    #s = np.linalg.norm(v, axis = 1)
     c = normals[:,0]
     sk = skew(v)
     R = np.eye(3) + sk + np.einsum('ijk,ikl->ijl', sk, sk)/(1+c[:,None,None])
@@ -135,33 +112,35 @@ def skew(normals):
     sk = sk - sk.transpose(0,2,1)
     return sk
 
-def computeCovMat(cloud, k = 10, eps = 1e-3):
+def computeCovMat(cloud, eigenvectors = None, k = 10, eps = 1e-3):
     n = cloud.shape[0]
     tree = KDTree(cloud)
     dist, indices = tree.query(cloud, k = k)
     covMat, all_eigenvectors = np.zeros((n, 3, 3)), np.zeros((n, 3, 3))
-    for k in tqdm(range(n), desc = 'Covariance'):
-        _, eigenvectors = PCA(cloud[indices[k]])
-        all_eigenvectors[k] = eigenvectors
-    R = computeRotationFromVectors(all_eigenvectors[:,0])
+    if eigenvectors is None:
+        for k in tqdm(range(n), desc = 'Covariance'):
+            _, eigenvectors = PCA(cloud[indices[k]])
+            all_eigenvectors[k] = eigenvectors
+    R = computeRotationFromVectors(all_eigenvectors[:,0]).swapaxes(1,2)
     I_eps = np.diag([eps, 1, 1])
     Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', R, I_eps), R.T)
     return Cov
 
-def computeCovTest(cloud):
+def computeCovTest(cloud, eigenvectors = None, k = 10, eps = 1e-3):
     n = cloud.shape[0]
     tree = KDTree(cloud)
-    dist, indices = tree.query(cloud, k = 10)
+    dist, indices = tree.query(cloud, k = k)
     cov_mat, all_eigenvectors = np.zeros((n,3,3)), np.zeros((n, 3, 3))
-    for k in tqdm(range(n), desc = 'Covariance'):
-        eigenvalues, eigenvectors = PCA(cloud[indices[k]])
-        all_eigenvectors[k] = eigenvectors
-    dz_cov_mat = np.diag([1e-3, 1, 1])
-    for i in range(n):
-        U = all_eigenvectors[i]
-        cov_mat[i,:,:] = U @ dz_cov_mat @ U.T
-
-    return cov_mat
+    if eigenvectors is None:
+        for k in tqdm(range(n), desc = 'Covariance'):
+            _, eigenvectors = PCA(cloud[indices[k]])
+            all_eigenvectors[k] = eigenvectors
+    if False:
+        to_switch = np.linalg.det(all_eigenvectors)<0
+        all_eigenvectors[to_switch,:,1], all_eigenvectors[to_switch,:,2] = all_eigenvectors[to_switch,:,2], all_eigenvectors[to_switch,:,1]
+    I_eps = np.diag([eps, 1, 1])
+    Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', all_eigenvectors, I_eps), all_eigenvectors.T)
+    return Cov
 
 def show_ICP(data, ref, R_list, T_list, neighbors_list):
     '''
@@ -251,7 +230,7 @@ def show_ICP(data, ref, R_list, T_list, neighbors_list):
     # Start figure
     plt.show()
 
-def grad(x,a,b,cov_a,cov_b):
+def grad(x, ref, data, center_matrix = None, cov_ref = None, cov_data = None):
     """
     Gradient of the loss loss for parameter x
     params:
@@ -265,15 +244,18 @@ def grad(x,a,b,cov_a,cov_b):
     """
     t = x[3:]
     R = RotMatrix(x[:3])
-    M = np.linalg.inv(cov_b + np.einsum('ik,jkl,lm->jim', R, cov_a, R.T))
+    if center_matrix is None:
+        center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
 
     g = np.zeros(6)
-    residual = b - a @ R.T -t[None,:] # shape n*d
-    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
+    residual = ref - data @ R.T -t[None,:] # shape n*d
+    tmp = np.einsum('ijk,ik->ij', center_matrix, residual) # shape n*d
 
     g[3:] = - 2 * np.einsum('ij->j',tmp)
-    outer = np.einsum('ij,il->ijl', tmp, tmp)
-    grad_R = - 2 * np.einsum('ij,il->jl',tmp,a) - 2 * np.einsum('ijk,kl,ilm->jm', cov_a, R.T, outer).T
+    grad_R = - 2 * np.einsum('ij,il->jl', tmp, data)
+    if cov_data is not None:
+        outer = np.einsum('ij,il->ijl', tmp, tmp)
+        grad_R -= 2 * np.einsum('ijk,kl,ilm->jm', cov_data, R.T, outer).T
     grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
     return g
@@ -303,30 +285,19 @@ def grad_relaxed(x,a,b,M):
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
     return g
 
-def grad_2(x, ref, data, proj_matrices):
-    """
-    Gradient of the loss loss for parameter x
-    params:
-        x : length 6 vector of transformation parameters
-            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
-        a : data to align n*3
-        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
-        M : central matrix for each data point n*3*3 (cf loss equation)
-    returns:
-        Value of the gradient of the loss function
-    """
+def grad_2(x, ref, data, center_matrix = None):
     t = x[3:]
     R = RotMatrix(x[:3])
-    M = proj_matrices
 
     g = np.zeros(6)
-    residual = ref - data @ R.T - t[None,:] # shape n*d
-    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
+    diff = ref - data @ R.T - t[None,:] # shape n*d
+    tmp = np.einsum('ijk,ik->ij', center_matrix, diff) # shape n*d
 
     g[3:] = - 2 * np.einsum('ij->j',tmp)
     grad_R = - 2 * np.einsum('ij,il->jl', tmp, data)
     grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
+
     return g
 
 def loss(x, ref_0, data_0, center_matrix = None, cov_ref = None, cov_data = None):

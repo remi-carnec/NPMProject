@@ -5,5 +5,9 @@
 \BOOKMARK [2][-]{subsection.3.2}{Point-to-plane}{section.3}% 5
 \BOOKMARK [2][-]{subsection.3.3}{Generalized-ICP}{section.3}% 6
 \BOOKMARK [1][-]{section.4}{Implementation}{}% 7
-\BOOKMARK [1][-]{section.5}{Experiments}{}% 8
-\BOOKMARK [1][-]{section.6}{Conclusion}{}% 9
+\BOOKMARK [2][-]{subsection.4.1}{Mathematical foundation}{section.4}% 8
+\BOOKMARK [2][-]{subsection.4.2}{Implementation strategy}{section.4}% 9
+\BOOKMARK [1][-]{section.5}{Experiments}{}% 10
+\BOOKMARK [2][-]{subsection.5.1}{Comparisons}{section.5}% 11
+\BOOKMARK [1][-]{section.6}{Improving Generalized-ICP?}{}% 12
+\BOOKMARK [1][-]{section.7}{Conclusion}{}% 13
