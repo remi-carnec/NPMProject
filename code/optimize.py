@@ -23,6 +23,7 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
     data_aligned = data.copy()
     n = data.shape[1]
     iter = 0
+    x = np.zeros(6)
 
     # Iterate until convergence
     while iter < max_iter and rms >= RMS_threshold:
@@ -33,7 +34,7 @@ def optimize(data, ref, algo, max_iter, RMS_threshold):
         indices_data = np.arange(n)[account]
 
         # Compute and apply transformation
-        R, T = algo.findBestTransform(data_aligned, ref, indices_data, indices_ref, args)
+        R, T, x = algo.findBestTransform(data_aligned, ref, indices_data, indices_ref, x, args)
         data_aligned = R @ data_aligned + T
 
         # Update loss

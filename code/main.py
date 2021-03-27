@@ -36,7 +36,7 @@ if __name__ == '__main__':
             print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
             plt.plot(RMS_list, label = algo.name)
     else:
-        algo = Algorithm('point2plane')
+        algo = Algorithm('plane2plane')
         start = time()
         bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, 40, 1e-5)
         print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))

@@ -59,7 +59,7 @@ def compute_eigen_data(data, ref, algo, k = 10, eps = 1e-3):
 
     # Covariance matrices
     if algo.name == 'plane2plane':
-        normal = True
+        normal = False
         if normal:
             args['cov_data'] = computeCovMat(data)
             args['cov_ref'] = computeCovMat(ref)
@@ -251,31 +251,6 @@ def show_ICP(data, ref, R_list, T_list, neighbors_list):
     # Start figure
     plt.show()
 
-def grad_loss(x,a,b,M):
-    """
-    Gradient of the loss loss for parameter x
-    params:
-        x : length 6 vector of transformation parameters
-            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
-        a : data to align n*3
-        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
-        M : central matrix for each data point n*3*3 (cf loss equation)
-    returns:
-        Value of the gradient of the loss function
-    """
-    t = x[3:]
-    R = RotMatrix(x[:3])
-    g = np.zeros(6)
-    residual = b - a @ R.T -t[None,:] # shape n*d
-    tmp = np.sum(M * residual[:,None,:], axis = 2) # shape n*d
-
-    g[3:] = - 2*np.sum(tmp, axis = 0)
-
-    grad_R = - 2* (tmp.T @ a) # shape d*d
-    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
-    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
-    return g
-
 def grad(x,a,b,cov_a,cov_b):
     """
     Gradient of the loss loss for parameter x
@@ -299,6 +274,31 @@ def grad(x,a,b,cov_a,cov_b):
     g[3:] = - 2 * np.einsum('ij->j',tmp)
     outer = np.einsum('ij,il->ijl', tmp, tmp)
     grad_R = - 2 * np.einsum('ij,il->jl',tmp,a) - 2 * np.einsum('ijk,kl,ilm->jm', cov_a, R.T, outer).T
+    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
+    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
+    return g
+
+def grad_relaxed(x,a,b,M):
+    """
+    Gradient of the loss loss for parameter x
+    params:
+        x : length 6 vector of transformation parameters
+            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
+        a : data to align n*3
+        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
+        M : central matrix for each data point n*3*3 (cf loss equation)
+    returns:
+        Value of the gradient of the loss function
+    """
+    t = x[3:]
+    R = RotMatrix(x[:3])
+    g = np.zeros(6)
+    residual = b - a @ R.T -t[None,:] # shape n*d
+    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
+
+    g[3:] = - 2*np.sum(tmp, axis = 0)
+
+    grad_R = - 2 * np.einsum('ij,il->jl',tmp,a) # shape d*d
     grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
     return g
@@ -329,3 +329,10 @@ def grad_2(x, ref, data, proj_matrices):
     g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
     return g
 
+def loss(x, ref_0, data_0, center_matrix = None, cov_ref = None, cov_data = None):
+    R, T = RotMatrix(x[:3]), x[3:]
+    diff = ref_0 - (data_0 @ R.T + T[None,:])
+    if center_matrix is None:
+        center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
+    loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
+    return loss_

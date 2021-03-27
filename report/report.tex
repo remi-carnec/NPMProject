@@ -14,8 +14,12 @@
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{xcolor}
-\usepackage{algorithm2e}
+%\usepackage{algorithm2e}
+\usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
+
 \usepackage{stmaryrd}
+\usepackage[ruled,vlined]{algorithm2e}
+
 
 \usepackage[justification=centering]{caption}
 \DeclarePairedDelimiter\ceil{\lceil}{\rceil}
@@ -60,17 +64,45 @@
 
 \section{Abstract}
 
+The following report aims at summarizing my work done for the final project of the MVA course NPM3D (2020-2021). In particular, the topic of my work was the Generalized-ICP method, introduced in \cite{generalized-icp}. You will find in this report some details about my understanding of this method, the mathematical foundation necessary to implement the algorithm, as well as my main takeaways from my experiments.
+
 \section{Introduction}
 
-Generalized Iterative Closest Point (Generalized-ICP) was introduced by Segal et. al. \cite{generalized-icp}. This algorithm can for instance be used for Scanmatching - to align two point clouds. It lies at the crossing of the two following methods, and combines them into a probabilistic framework:
+Generalized Iterative Closest Point (Generalized-ICP) was introduced by Segal et. al. \cite{generalized-icp}. This algorithm can for instance be used for Scanmatching - i.e. to align two point clouds. It lies at the crossing of the two following methods, and combines them into a probabilistic framework:
 \begin{itemize}
     \item The standard ICP, introduced in \cite{icp}.
     \item The Point-to-plane method, introduced in \cite{point2plane}.
 \end{itemize}
-It is argued in \cite{generalized-icp} that Generalized-ICP outperforms these two methods in numerous datasets, in addition to giving a flexible probabilistic interpretation. In this report, we first briefly recall the basic principles of standard ICP and point-to-plane. We then start giving more details about the Generalized-ICP approach, its probabilistic interpretation, the algorithm as well as our implementation.
+It is argued in \cite{generalized-icp} that, in addition to giving a flexible probabilistic interpretation, Generalized-ICP outperforms these two methods for numerous datasets. In this report, we first briefly recall the basic principles of standard ICP and Point-to-plane procedures. We then start giving more details about the Generalized-ICP approach, its probabilistic interpretation, the algorithm as well as our implementation.
 Eventually, we compare the performances of all three algorithms in terms of convergence and computational time.
 
 \section{The algorithm}
+
+All three algorithms have the same structure, which consists in iteratively repeating:
+\begin{itemize}
+    \item Computing the correspondance between the two scans.
+    \item Computing a transformation $T = (R, t)$ that minimizes a certain loss $l(R,t)$.
+\end{itemize}
+The key to the interpretation lies in the loss function $l(R,t)$, which depends on the method. We explicit the procedure below. Note that the threshold $d_{\text{max}}$ is used to deal with the violation of the assumption of full overlap. More details are given about $l(R,t)$ in the following subsections. \\
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \KwIn{Two pointclouds: $A = \{a_i\}, \, B = \{b_i\}$}
+    \KwResult{The correct transformation $R,t$ that aligns $A$ and $B$}
+     Initialize $R,t$\;
+     \While{not converged}{
+    \For{$i \gets 1$ to $N$}{
+      $m_i \gets \texttt{FindClosestPointInA}(T\cdot b_i)$\;
+      \eIf{$\|m_i - T\cdot b_i\| \leq d_{\max}$}{
+       $w_i \gets 1$\;
+       }{
+       $w_i \gets 0$\;
+      }}
+    $T \gets \text{argmin}_{R,t} l(R,t)$
+    }
+    \caption{Scanmathing algorithm structure}
+\end{algorithm}
+
 
 \subsection{Standard ICP}
 

@@ -6,5 +6,5 @@
 \contentsline {subsection}{\numberline {3.2}Point-to-plane}{2}{subsection.3.2}
 \contentsline {subsection}{\numberline {3.3}Generalized-ICP}{2}{subsection.3.3}
 \contentsline {section}{\numberline {4}Implementation}{2}{section.4}
-\contentsline {section}{\numberline {5}Experiments}{3}{section.5}
-\contentsline {section}{\numberline {6}Conclusion}{3}{section.6}
+\contentsline {section}{\numberline {5}Experiments}{4}{section.5}
+\contentsline {section}{\numberline {6}Conclusion}{4}{section.6}
