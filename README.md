@@ -6,6 +6,6 @@ This is my final project of the course NPM3D that focused on the *Generalized-IC
 
 ## Code
 A starting code is provided in ```main_py```, where the user can play around with the different methods on two datasets: the *Stanford Bunny* and the *Asian Dragon* (https://graphics.stanford.edu/data/3Dscanrep/). The implementation relies on three main files:
-- ```optimize.py```: contains the main structure of the optimization algorithm (see *Generalized-ICP*, Segal et al.)
-- ```algorithms.py```: used to minimize the loss for each different method (Closed form solution for *Standard ICP*, Conjugate Gradient for *Point-to-plane* and *Generalized-ICP*.)
+- ```optimize.py```: contains the main structure of the optimization algorithm (see *Generalized-ICP*, Segal et al.).
+- ```algorithms.py```: used to minimize the loss at each iteration for the different methods (using a closed form solution for *Standard ICP* and the Conjugate Gradient for *Point-to-plane* and *Generalized-ICP*).
 - ```utils.py```: contains all sorts of useful functions to perform PCA, compute rotation matrices, gradients, etc.
