@@ -5,6 +5,7 @@ from time import time
 from matplotlib import pyplot as plt
 from algorithms import Algorithm
 from optimize import optimize
+from utils import *
 
 if __name__ == '__main__':
 
@@ -14,78 +15,63 @@ if __name__ == '__main__':
     # Cloud paths
     bunny_o_path = '../data/bunny_original.ply'
     bunny_p_path = '../data/bunny_perturbed.ply'
+    #from plyfile import PlyData, PlyElement
+    #dragon_path = '../data/dragon.ply'
+    #plydata = PlyData.read(dragon_path)
     #bunny_o_path = '../model_bunny.ply'
     #bunny_p_path = '../transformed_point_cloud.ply'
+    bunny_o_path = '../dragon_o.ply'
+    #bunny_p_path = '../data/bunny_perturbed.ply'
 
-    bunny_o_path = '../bunny_half.ply'
-    bunny_p_path = '../bunny_new_perturbed.ply'
+    #bunny_o_path = '../bunny_half.ply'
+    #bunny_p_path = '../bunny_new_perturbed.ply'
 
     # Load clouds
     bunny_o_ply = read_ply(bunny_o_path)
-    bunny_p_ply = read_ply(bunny_p_path)
+
     bunny_o = np.vstack((bunny_o_ply['x'], bunny_o_ply['y'], bunny_o_ply['z']))
-    bunny_p = np.vstack((bunny_p_ply['x'], bunny_p_ply['y'], bunny_p_ply['z']))
+    #bunny_p_ply = read_ply(bunny_p_path)
+    #bunny_p = np.vstack((bunny_p_ply['x'], bunny_p_ply['y'], bunny_p_ply['z']))
 
     #bunny_o = bunny_o[:,np.random.choice(bunny_o.shape[1], size = int(bunny_o.shape[1]/2))]
     #bunny_p = bunny_p[:,np.random.choice(bunny_p.shape[1], size = int(bunny_p.shape[1]/2))]
     #write_ply('../bunny_o_sub', [bunny_o.T], ['x', 'y', 'z'])
     #write_ply('../bunny_p_sub', [bunny_p.T], ['x', 'y', 'z'])
     # Random
-    #thetas = 0.5 * np.random.randn(3)
-    #t = np.random.randn(3)*0.03
-    #R = RotMatrix(thetas)
-    #new_perturbed = t[:,None] + R @ bunny_p
-    #write_ply('../bunny_new_perturbed', [new_perturbed.T], ['x', 'y', 'z'])
-    #bunny_p = new_perturbed
+    thetas = 0.5 * np.random.randn(3)
+    t = np.random.randn(3)*0.03
+    R = RotMatrix(thetas)
+    new_perturbed = t[:,None] + R @ bunny_o
+    write_ply('../bunny_new_perturbed', [new_perturbed.T], ['x', 'y', 'z'])
+    bunny_p = new_perturbed
 
     # Apply ICP
-    config_opti = {'max_iter': 100, 'dist_threshold': 0.05, 'RMS_threshold': 1e-5, 'kNeighbors': 20}
-    comparison = False
+    config_opti = {'max_iter': 40, 'dist_threshold': 0.1, 'RMS_threshold': 1e-5, 'kNeighbors': 20}
+    comparison = True
     if comparison:
         plt.title("Convergence of the different methods")
-        algos = [Algorithm('plane-to-plane'), Algorithm('point-to-plane'), Algorithm('point-to-point')]
+        algos = [Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': False, 'max_iter': 10}), Algorithm('point-to-plane'), Algorithm('point-to-point')]
         for algo in algos:
             start = time()
-            bunny_p_opt, RMS_list = optimize(bunny_p, bunny_o, algo, config_opti)
+            bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
             print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
             plt.plot(RMS_list, label = algo.name)
-            #if algo.name == 'plane-to-plane':
-            #    write_ply('../bunny_new_perturbed_solution', [bunny_p_opt.T], ['x', 'y', 'z'])
+            if algo.name == 'plane-to-plane':
+                write_ply('../bunny_new_perturbed_solution', [bunny_p_opt.T], ['x', 'y', 'z'])
     else:
-        #algo = Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': False, 'max_iter': 10})
-        #start = time()
-        #bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
-        #print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
-        #plt.plot(RMS_list, label = algo.name + ", exact gradient")
+        algo = Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': False, 'max_iter': 10})
+        start = time()
+        bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
+        print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
+        plt.plot(RMS_list, label = algo.name + ", exact gradient")
         #print("R = {}".format(R))
         #print("T = {}".format(T))
-        algo = Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': True, 'max_iter': 10})
-        start = time()
-        bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
-        print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
-        print("R = {}".format(R))
-        print("T = {}".format(T))
-        plt.plot(RMS_list, label = "relaxed gradient, " + str(algo.config_algo['max_iter']) + " iterations")
-        algo = Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': True, 'max_iter': 20})
-        start = time()
-        bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
-        print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
-        print("R = {}".format(R))
-        print("T = {}".format(T))
-        plt.plot(RMS_list, label = "relaxed gradient, " + str(algo.config_algo['max_iter']) + " iterations")
-        algo = Algorithm(name = 'plane-to-plane', config_algo = {'relaxed_gradient': True, 'max_iter': 30})
-        start = time()
-        bunny_p_opt, RMS_list, R, T = optimize(bunny_p, bunny_o, algo, config_opti)
-        print("Optimization for " + algo.name + " lasted: {}s".format(round(time()-start,2)))
-        print("R = {}".format(R))
-        print("T = {}".format(T))
-        plt.plot(RMS_list, label = "relaxed gradient, " + str(algo.config_algo['max_iter']) + " iterations")
         plt.title("Influence of relaxation")
     # Show ICP
     #show_ICP(bunny_p, bunny_o, R_list, T_list, neighbors_list)
 
     # Save cloud
-    #write_ply('../bunny_r_opt', [bunny_p_opt.T], ['x', 'y', 'z'])
+    write_ply('../bunny_r_opt', [bunny_p_opt.T], ['x', 'y', 'z'])
 
     # Plot RMS
     #plt.plot(RMS_list)
@@ -93,7 +79,7 @@ if __name__ == '__main__':
     plt.xlabel('iterations')
     plt.ylabel('RMS')
     plt.legend()
-    #plt.savefig('../report/img/comparison_relaxed_1.png')
+    plt.savefig('../report/img/comparison_dragon.png')
     plt.show()
 
 if False:

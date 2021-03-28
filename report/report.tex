@@ -60,7 +60,7 @@
 
 \tableofcontents
 
-%\break
+\break
 
 \section{Abstract}
 
@@ -221,12 +221,17 @@ We briefly enumerate the key aspects of our implementation:
 We first compare the performance of the different algorithms on the \textit{perturbed} and \textit{original bunny} dataset that we used for the second practical session. The tolerance was set to $10^{-6}$. We note that Point-to-plane perfoms better than Point-to-point in terms of number of iterations, and Generalized-ICP seems to be the best method. 
 \begin{figure}[ht!]
     \centering
-    \begin{minipage}{0.5\linewidth}
+    \begin{minipage}{0.45\linewidth}
     \includegraphics[width=\linewidth]{img/comparison_1_clouds.png}
+    \subcaption{Original clouds}
     \end{minipage}\hfill
-    \begin{minipage}{0.5\linewidth}
-    \includegraphics[width=\linewidth]{img/comparison_1.png}
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{img/conv_1.png}
+    \subcaption{Generalized-ICP final transformation}
     \end{minipage}
+    \begin{minipage}{0.5\linewidth}
+        \includegraphics[width=\linewidth]{img/comparison_1.png}
+    \end{minipage}\hfill
     \caption{Comparison of convergence between the different methods}
     \label{fig:comp1}
 \end{figure}
@@ -241,7 +246,7 @@ Similarily, we try the three methods on more distant datasets by applying a rand
     \begin{minipage}{0.5\linewidth}
     \includegraphics[width=\linewidth]{img/comparison_2.png}
     \end{minipage}
-    \caption{Comparison of convergence between the different methods}
+    \caption{Comparison of convergence between the different methods for the original point clouds (left)}
     \label{fig:comp2}
 \end{figure}
 
@@ -257,7 +262,7 @@ Even for clouds that do not completely coincide, the Plane-to-plane approach beh
     \includegraphics[width=\linewidth]{img/comparison_4.png}
     \caption{Randomly selecting $1/5$ of the points}
     \end{minipage}
-    \caption{Convergence between the different methods}
+    \caption{Convergence of the different methods}
     \label{fig:comp3}
 \end{figure}
 
@@ -266,19 +271,40 @@ It is also important to see if the algorithm performs well if we violate the ful
     \centering
     \begin{minipage}{0.4\linewidth}
     \includegraphics[width=\linewidth]{img/comparison_5_clouds.png}
+    \subcaption{A random transformation}
     \end{minipage}\hfill
     \begin{minipage}{0.5\linewidth}
     \includegraphics[width=\linewidth]{img/comparison_5.png}
+    \subcaption{The associated convergence}
     \end{minipage}
     \begin{minipage}{0.5\linewidth}
-        \includegraphics[width=\linewidth]{img/comparison_6_clouds.png}
-        \end{minipage}\hfill
-        \begin{minipage}{0.5\linewidth}
-        \includegraphics[width=\linewidth]{img/comparison_6.png}
-        \end{minipage}
+    \includegraphics[width=\linewidth]{img/comparison_6_clouds.png}
+    \subcaption{Another random transformation}
+    \end{minipage}\hfill
+    \begin{minipage}{0.5\linewidth}
+    \includegraphics[width=\linewidth]{img/comparison_6.png}
+    \subcaption{The associated convergence}
+    \end{minipage}
     \caption{Comparison of convergence between the different methods for partial overlapping}
     \label{fig:comp5_6}
 \end{figure}
+
+We want to see how Plane-to-plane performs on other datasets. We use the \textit{Dragon} dataset, apply a random transformation and compare the different methods as shown in Figure \ref{fig:comp_dragon}. 
+
+\begin{figure}[ht!]
+    \centering
+    \begin{minipage}{0.4\linewidth}
+        \includegraphics[width=\linewidth]{img/conv_dragon.png}
+        \caption{Original (black), perturbed (red) and final (green) pointclouds}
+        \end{minipage}\hfill
+    \begin{minipage}{0.5\linewidth}
+    \includegraphics[width=\linewidth]{img/comparison_dragon.png}
+    \caption{Convergence}
+    \end{minipage}
+    \caption{Convergence of the different methods}
+    \label{fig:comp_dragon}
+\end{figure}
+
 
 However, Generalized-ICP is much slower than the two other methods. Indeed, the computation of the loss and of the gradient requires inverting numerous matrices of the form $C_i^B + R_i C_i^A R_i^T$. For instance, running the three algorithms on the dataset shown in Figure \ref{fig:comp1} leads to the following computational times:
 \begin{itemize}
@@ -287,7 +313,7 @@ However, Generalized-ICP is much slower than the two other methods. Indeed, the 
     \item Plane-to-plane: $49.88$s
 \end{itemize}
 
-\section{Improving Generalized-ICP?}
+\subsection{Improving Generalized-ICP?}
 \begin{itemize}
     \item As we hinted at before, the optimization problem of Generalized-ICP is not convex. This causes the optimizer (Conjugate gradient) to get stuck on local minimas and spend many iterations (and time) converging to solutions we are not interested in. This is illustrated in Figure \ref{fig:maxiter}. We can solve this problem by reducing the \texttt{max\_iter} parameter. Note that there is a trade-off: if this parameter is too low, then the algorithm has trouble converging and the number of overall iterations (in the \textit{While}-loop in \autoref{algo}) needed increases again. Setting $\texttt{max\_iter}=10$ seems to be a good compromise.
     \begin{figure}[ht!]
@@ -326,6 +352,8 @@ However, Generalized-ICP is much slower than the two other methods. Indeed, the 
 \end{itemize}
 
 \section{Conclusion}
+
+In this report, we summarized the basic principles of Iterative Closest Point (ICP), Point-to-plane and Generalized ICP. We ran the calculation we needed to implement an optimzation method for each algorithm, and finally we compared their performance. We showed that Generalized-ICP seems to perform better in terms of total iterations and convergence for many different situations: complete overlap, partial overlap, random transformation. Even if we saw that it could sometimes be unstable, in most cases it outperforms Point-to-point and Point-to-plane. That being said, we would like to highlight that it is also much more computationally expensive, due to the tedious loss and gradient calculation. The total computation time can be orders of magnitudes higher than the other methods, even for very simple datasets. This was not made very clear in the original paper \cite{generalized-icp}, which in our opinion overlooked this essential issue. We investigated two possibilities to accelerate this procedure: \textit{Early-stopping} and \textit{Gradient-relaxation}. However, the former can be tricky to adjust, and the latter can lack robustness.
 
 \break
 
