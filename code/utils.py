@@ -6,6 +6,63 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.neighbors import KDTree
 from tqdm import tqdm
 
+# For Point-to-plane and Plane-to-plane
+def compute_eigen_data(data, ref, algo, k = 10, eps = 1e-3):
+    # Compute eigenvectors, projection matrices
+    tree = KDTree(ref)
+    dist, indices = tree.query(ref, k = k)
+    all_eigenvectors = PCA(ref, indices)
+    projMatrices = np.einsum('ij,ik->ijk', all_eigenvectors[:,0], all_eigenvectors[:,0])
+    args = {'eigenvectors': all_eigenvectors, 'projMatrices': projMatrices}
+
+    # Covariance matrices
+    if algo.name == 'plane-to-plane':
+        args['cov_data'] = computeCovMat(data, None, k = k, eps = eps)
+        args['cov_ref'] = computeCovMat(ref, all_eigenvectors, k = k, eps = eps)
+
+    return tree, args
+
+def computeCovMat(cloud, all_eigenvectors = None, k = 10, eps = 1e-3):
+    # Compute neighborhoods
+    tree = KDTree(cloud)
+    dist, indices = tree.query(cloud, k = k)
+
+    # Compute eigenvectors if not provided
+    if all_eigenvectors is None:
+        all_eigenvectors = PCA(cloud, indices)
+
+    # Compute rotated covariance matrix
+    I_eps = np.diag([eps, 1, 1])
+    Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', all_eigenvectors, I_eps), all_eigenvectors.T)
+    return Cov
+
+def PCA(cloud, indices):
+    neighborhoods = cloud[indices]
+    centered_points = neighborhoods - np.mean(neighborhoods, axis = 1)[:,None,:]
+    cov = np.einsum('ijk,ikl->ijl',centered_points.swapaxes(1,2), centered_points)/centered_points.shape[1]
+    all_eigenvectors = np.zeros((cloud.shape[0], 3, 3))
+    for k in tqdm(range(cloud.shape[0]), desc = 'Eigenvectors'):
+        all_eigenvectors[k] = np.linalg.eigh(cov[k])[1]
+    return all_eigenvectors
+
+def RotDecompo(thetas):
+    R_x = np.array([[1,0,0], [0, np.cos(thetas[0]), -np.sin(thetas[0])], [0, np.sin(thetas[0]), np.cos(thetas[0])]])
+    R_y = np.array([[np.cos(thetas[1]),0,np.sin(thetas[1])], [0, 1, 0], [-np.sin(thetas[1]),0,np.cos(thetas[1])]])
+    R_z = np.array([[np.cos(thetas[2]),-np.sin(thetas[2]), 0], [np.sin(thetas[2]),np.cos(thetas[2]), 0], [0, 0, 1]])
+    return R_x, R_y, R_z
+
+def RotMatrix(thetas):
+    R_x, R_y, R_z = RotDecompo(thetas)
+    return R_z @ R_y @ R_x
+
+def computeGradRot(thetas):
+    grad = np.zeros((3,3,3))
+    R_x, R_y, R_z = RotDecompo(thetas)
+    grad_x = np.array([[0,0,0], [0, -np.sin(thetas[0]), -np.cos(thetas[0])], [0, np.cos(thetas[0]), -np.sin(thetas[0])]])
+    grad_y = np.array([[-np.sin(thetas[1]),0,np.cos(thetas[1])], [0, 0, 0], [-np.cos(thetas[1]),0,-np.sin(thetas[1])]])
+    grad_z = np.array([[-np.sin(thetas[2]),-np.cos(thetas[2]), 0], [np.cos(thetas[2]),-np.sin(thetas[2]), 0], [0, 0, 0]])
+    grad[0], grad[1], grad[2] = R_z @ R_y @ grad_x, R_z @ grad_y @ R_x, grad_z @ R_y @ R_x
+    return grad
 
 def best_rigid_transform(data, ref):
     '''
@@ -30,280 +87,49 @@ def best_rigid_transform(data, ref):
     T = T.reshape(-1,1)
     return R, T
 
-def PCA(points):
-    # Center points
-    centered_points = points - np.mean(points, axis = 0)
-
-    # Compute Cov matrix
-    N = points.shape[0]
-    cov = (centered_points.T @ centered_points)/N
-
-    # Compute eigenvectors and eigenvalues
-    eigenvalues, eigenvectors = np.linalg.eigh(cov)
-
-    return eigenvalues, eigenvectors
-
-def compute_eigen_data(data, ref, algo, k = 10, eps = 1e-3):
-    # Compute eigenvectors, projection matrices
-    tree = KDTree(ref)
-    dist, indices = tree.query(ref, k = k)
-    all_eigenvalues = np.zeros((ref.shape[0], 3))
-    all_eigenvectors = np.zeros((ref.shape[0], 3, 3))
-    for i in tqdm(range(ref.shape[0]), desc = 'Eigenvectors'):
-        eigenvalues, eigenvectors = PCA(ref[indices[i]])
-        all_eigenvalues[i] = eigenvalues
-        all_eigenvectors[i] = eigenvectors
-    projMatrices = np.einsum('ij,ik->ijk', all_eigenvectors[:,0], all_eigenvectors[:,0])
-    args = {'eigenvalues': all_eigenvalues, 'eigenvectors': all_eigenvectors, 'projMatrices': projMatrices}
-
-    # Covariance matrices
-    if algo.name == 'plane-to-plane':
-        normal = False
-        if normal:
-            args['cov_data'] = computeCovMat(data, None, k = k, eps = eps)
-            args['cov_ref'] = computeCovMat(ref, eigenvectors, k = k, eps = eps)
-        else:
-            args['cov_data'] = computeCovTest(data, None, k = k, eps = eps)
-            args['cov_ref'] = computeCovTest(ref, eigenvectors, k = k, eps = eps)
-
-    return tree, args
-
-def ProjMatrix(indices_ref, eigen_data):
-    all_eigenvalues, all_eigenvectors = eigen_data[0][indices_ref], eigen_data[1][indices_ref]
-    projMatrices = np.einsum('ij,ik->ijk', all_eigenvectors[:,0], all_eigenvectors[:,0])
-    return projMatrices
-
-def RotDecompo(thetas):
-    R_x = np.array([[1,0,0], [0, np.cos(thetas[0]), -np.sin(thetas[0])], [0, np.sin(thetas[0]), np.cos(thetas[0])]])
-    R_y = np.array([[np.cos(thetas[1]),0,np.sin(thetas[1])], [0, 1, 0], [-np.sin(thetas[1]),0,np.cos(thetas[1])]])
-    R_z = np.array([[np.cos(thetas[2]),-np.sin(thetas[2]), 0], [np.sin(thetas[2]),np.cos(thetas[2]), 0], [0, 0, 1]])
-    return R_x, R_y, R_z
-
-def RotMatrix(thetas):
-    R_x, R_y, R_z = RotDecompo(thetas)
-    return R_z @ R_y @ R_x
-
-def computeGradRot(thetas):
-    grad = np.zeros((3,3,3))
-    R_x, R_y, R_z = RotDecompo(thetas)
-    grad_x = np.array([[0,0,0], [0, -np.sin(thetas[0]), -np.cos(thetas[0])], [0, np.cos(thetas[0]), -np.sin(thetas[0])]])
-    grad_y = np.array([[-np.sin(thetas[1]),0,np.cos(thetas[1])], [0, 0, 0], [-np.cos(thetas[1]),0,-np.sin(thetas[1])]])
-    grad_z = np.array([[-np.sin(thetas[2]),-np.cos(thetas[2]), 0], [np.cos(thetas[2]),-np.sin(thetas[2]), 0], [0, 0, 0]])
-    grad[0], grad[1], grad[2] = R_z @ R_y @ grad_x, R_z @ grad_y @ R_x, grad_z @ R_y @ R_x
-    return grad
-
-def computeRotations(eigenvectors):
-    epsilon = 1e-2
-    cov = np.diag([epsilon, 1, 1])
-    rotations = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', eigenvectors, cov), eigenvectors.T)
-    return rotations
-
-def computeRotationFromVectors(normals):
-    e1 = np.array([1, 0, 0])
-    v = np.apply_along_axis(lambda x: np.cross(e1, x), axis=1, arr = normals)
-    c = normals[:,0]
-    sk = skew(v)
-    R = np.eye(3) + sk + np.einsum('ijk,ikl->ijl', sk, sk)/(1+c[:,None,None])
-    return R
-
-def skew(normals):
-    sk = np.zeros((normals.shape[0], normals.shape[1], normals.shape[1]))
-    sk[:,0,1], sk[:,0,2], sk[:,1,2] = - normals[:,2], normals[:,1], - normals[:,0]
-    sk = sk - sk.transpose(0,2,1)
-    return sk
-
-def computeCovMat(cloud, eigenvectors = None, k = 10, eps = 1e-3):
-    n = cloud.shape[0]
-    tree = KDTree(cloud)
-    dist, indices = tree.query(cloud, k = k)
-    covMat, all_eigenvectors = np.zeros((n, 3, 3)), np.zeros((n, 3, 3))
-    if eigenvectors is None:
-        for k in tqdm(range(n), desc = 'Covariance'):
-            _, eigenvectors = PCA(cloud[indices[k]])
-            all_eigenvectors[k] = eigenvectors
-    R = computeRotationFromVectors(all_eigenvectors[:,0]).swapaxes(1,2)
-    I_eps = np.diag([eps, 1, 1])
-    Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', R, I_eps), R.T)
-    return Cov
-
-def computeCovTest(cloud, eigenvectors = None, k = 10, eps = 1e-3):
-    n = cloud.shape[0]
-    tree = KDTree(cloud)
-    dist, indices = tree.query(cloud, k = k)
-    cov_mat, all_eigenvectors = np.zeros((n,3,3)), np.zeros((n, 3, 3))
-    if eigenvectors is None:
-        for k in tqdm(range(n), desc = 'Covariance'):
-            _, eigenvectors = PCA(cloud[indices[k]])
-            all_eigenvectors[k] = eigenvectors
-    if False:
-        to_switch = np.linalg.det(all_eigenvectors)<0
-        all_eigenvectors[to_switch,:,1], all_eigenvectors[to_switch,:,2] = all_eigenvectors[to_switch,:,2], all_eigenvectors[to_switch,:,1]
-    I_eps = np.diag([eps, 1, 1])
-    Cov = np.einsum('ijk,kli->ijl', np.einsum('ijk,kl->ijl', all_eigenvectors, I_eps), all_eigenvectors.T)
-    return Cov
-
-def show_ICP(data, ref, R_list, T_list, neighbors_list):
+def loss(x, ref_0, data_0, center_matrix = None, cov_ref = None, cov_data = None):
     '''
-    Show a succession of transformation obtained by ICP.
-    Inputs :
-                  data = (d x N_data) matrix where "N_data" is the number of point and "d" the dimension
-                   ref = (d x N_ref) matrix where "N_ref" is the number of point and "d" the dimension
-                R_list = list of the (d x d) rotation matrices found at each iteration
-                T_list = list of the (d x 1) translation vectors found at each iteration
-        neighbors_list = list of the neighbors of data in ref at each iteration
-
-    This function works if R_i and T_i represent the tranformation of the original cloud at iteration i, such
-    that data_(i) = R_i * data + T_i.
-    If you saved incremental transformations such that data_(i) = R_i * data_(i-1) + T_i, you will need to
-    modify your R_list and T_list in your ICP implementation.
+    Value of the loss for parameter x = (theta, t)
+    loss(x) = sum_i d_i^T center_matrix d_i
     '''
-
-    # Get the number of iteration
-    max_iter = len(R_list)
-
-    # Get data dimension
-    dim = data.shape[0]
-
-    # Insert identity as first transformation
-    R_list.insert(0, np.eye(dim))
-    T_list.insert(0, np.zeros((dim, 1)))
-
-    # Create global variable for the graph plot
-    global iteration, show_neighbors
-    iteration = 0
-    show_neighbors = 0
-
-    # Define the function drawing the points
-    def draw_event():
-        data_aligned = R_list[iteration].dot(data) + T_list[iteration]
-        plt.cla()
-        if dim == 2:
-            ax.plot(ref[0], ref[1], '.')
-            ax.plot(data_aligned[0], data_aligned[1], '.')
-            if show_neighbors and iteration < max_iter:
-                lines = [[data_aligned[:, ind1], ref[:, ind2]] for ind1, ind2 in enumerate(neighbors_list[iteration])]
-                lc = mc.LineCollection(lines, colors=[0, 1, 0, 0.5], linewidths=1)
-                ax.add_collection(lc)
-            plt.axis('equal')
-        if dim == 3:
-            ax.plot(ref[0], ref[1], ref[2], '.')
-            ax.plot(data_aligned[0], data_aligned[1], data_aligned[2], '.')
-            plt.axis('equal')
-        if show_neighbors and iteration < max_iter:
-            ax.set_title('Iteration {:d} ===> press right / left to change\nNeighbors ON ===> Press n to change (only in 2D)'.format(iteration))
-        else:
-            ax.set_title('Iteration {:d} ===> press right / left to change\nNeighbors OFF ===> Press n to change (only in 2D)'.format(iteration))
-
-        plt.draw()
-
-    # Define the function getting keyborad inputs
-    def press(event):
-        global iteration, show_neighbors
-        if event.key == 'right':
-            if iteration < max_iter:
-                iteration += 1
-        if event.key == 'left':
-            if iteration > 0:
-                iteration -= 1
-        if event.key == 'n':
-            if dim < 3:
-                show_neighbors = 1 - show_neighbors
-        draw_event()
-
-    # Create figure
-    fig = plt.figure()
-
-    # Intitiate graph for 3D data
-    if dim == 2:
-        ax = fig.add_subplot(111)
-    elif dim == 3:
-        ax = fig.add_subplot(111, projection='3d')
+    R, T = RotMatrix(x[:3]), x[3:]
+    diff = ref_0 - (data_0 @ R.T + T[None,:])
+    if center_matrix is None:
+        inv_center_matrix = cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T)
+        loss_ = np.einsum('ij,ij', diff, np.linalg.solve(inv_center_matrix, diff))
     else:
-        print('wrong data dimension')
-
-    # Connect keyboard function to the figure
-    fig.canvas.mpl_connect('key_press_event', press)
-
-    # Plot first iteration
-    draw_event()
-
-    # Start figure
-    plt.show()
+        loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
+    return loss_
 
 def grad(x, ref, data, center_matrix = None, cov_ref = None, cov_data = None):
     """
-    Gradient of the loss loss for parameter x
-    params:
-        x : length 6 vector of transformation parameters
-            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
-        a : data to align n*3
-        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
-        M : central matrix for each data point n*3*3 (cf loss equation)
-    returns:
-        Value of the gradient of the loss function
+    Gradient of the loss for parameter x = (theta, t).
+    The user can choose to fix the center matrix (e.g. Point-to-plane)
+    By default, is G-ICP central matrix
     """
+    # Initialize transformation and gradient
     t = x[3:]
     R = RotMatrix(x[:3])
-    if center_matrix is None:
-        center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
-
     g = np.zeros(6)
-    residual = ref - data @ R.T -t[None,:] # shape n*d
-    tmp = np.einsum('ijk,ik->ij', center_matrix, residual) # shape n*d
 
+    # Calculate error
+    diff = ref - data @ R.T -t[None,:]
+
+    # Compute center_matrix^{-1} * diff
+    if center_matrix is None:
+        inv_center_matrix = cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T)
+        tmp = np.linalg.solve(inv_center_matrix, diff)
+    else:
+        tmp = np.einsum('ijk,ik->ij', center_matrix, diff)
+
+    # Compute gradient of l(R,t)
     g[3:] = - 2 * np.einsum('ij->j',tmp)
     grad_R = - 2 * np.einsum('ij,il->jl', tmp, data)
     if cov_data is not None:
         outer = np.einsum('ij,il->ijl', tmp, tmp)
         grad_R -= 2 * np.einsum('ijk,kl,ilm->jm', cov_data, R.T, outer).T
-    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
-    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
+
+    # Apply chain rule (euler angles)
+    grad_angles = computeGradRot(x[:3])
+    g[:3] = np.sum(grad_R[None,:,:] * grad_angles, axis = (1,2))
     return g
-
-def grad_relaxed(x,a,b,M):
-    """
-    Gradient of the loss loss for parameter x
-    params:
-        x : length 6 vector of transformation parameters
-            (t_x,t_y,t_z, theta_x, theta_y, theta_z)
-        a : data to align n*3
-        b : ref point cloud n*3 a[i] is the nearest neibhor of Rb[i]+t
-        M : central matrix for each data point n*3*3 (cf loss equation)
-    returns:
-        Value of the gradient of the loss function
-    """
-    t = x[3:]
-    R = RotMatrix(x[:3])
-    g = np.zeros(6)
-    residual = b - a @ R.T -t[None,:] # shape n*d
-    tmp = np.einsum('ijk,ik->ij', M, residual) # shape n*d
-
-    g[3:] = - 2*np.sum(tmp, axis = 0)
-
-    grad_R = - 2 * np.einsum('ij,il->jl',tmp,a) # shape d*d
-    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
-    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
-    return g
-
-def grad_2(x, ref, data, center_matrix = None):
-    t = x[3:]
-    R = RotMatrix(x[:3])
-
-    g = np.zeros(6)
-    diff = ref - data @ R.T - t[None,:] # shape n*d
-    tmp = np.einsum('ijk,ik->ij', center_matrix, diff) # shape n*d
-
-    g[3:] = - 2 * np.einsum('ij->j',tmp)
-    grad_R = - 2 * np.einsum('ij,il->jl', tmp, data)
-    grad_R_euler = computeGradRot(x[:3]) # shape 3*d*d
-    g[:3] = np.sum(grad_R[None,:,:] * grad_R_euler, axis = (1,2)) # chain rule
-
-    return g
-
-def loss(x, ref_0, data_0, center_matrix = None, cov_ref = None, cov_data = None):
-    R, T = RotMatrix(x[:3]), x[3:]
-    diff = ref_0 - (data_0 @ R.T + T[None,:])
-    if center_matrix is None:
-        center_matrix = np.linalg.inv(cov_ref + np.einsum('ik,jkl,lm->jim', R, cov_data, R.T))
-    loss_ = np.einsum('ij,ij', diff, np.einsum('ijk,ik -> ij', center_matrix , diff))
-    return loss_

@@ -125,6 +125,8 @@ INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/tools/xspace.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/tools/xspace.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/relsize/relsize.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/relsize/relsize.sty
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/setspace/setspace.sty
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/setspace/setspace.sty
 INPUT /Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.aux
 INPUT /Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.aux
 OUTPUT /Users/remicarnec/Desktop/MVA/Nuages de points/Project/NPMProject/report/tmp/report.aux
